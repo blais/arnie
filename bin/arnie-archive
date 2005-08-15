@@ -88,7 +88,7 @@ def getmode( fn ):
     else:
         statres = os.stat(fn)
     return statres.st_mode
-    
+
 
 #-------------------------------------------------------------------------------
 #
@@ -100,7 +100,7 @@ def find_files( root, histfiles, excludes=[] ):
     - root: the root directory to search into -> string
     - histfiles: history files to compare against -> dict of tuples
     - excludes: list of regular expressions to exclude files -> list of re
-    
+
     :Return Value: -> a tuple of lists
     - alldirs: the entire list of directories visited during the traversal
     - incrdirs: the list of dirs to add to the archive
@@ -114,12 +114,14 @@ def find_files( root, histfiles, excludes=[] ):
         for exre in excludes:
             if exre.match(fn):
                 return True
-            
+
     allfiles, alldirs = [], []
     incrfiles, incrdirs = [], []
     remlen = len(root) + 1
     for rroot, dirs, files in os.walk(root):
         relroot = rroot[remlen:]
+        if opts.verbose:
+            print "Visiting...", relroot
 
         # Remove history file so that we do not back it up.
         if rroot == root:
@@ -166,7 +168,7 @@ def find_files( root, histfiles, excludes=[] ):
             hexdigest = md5.new(f.read()).hexdigest()
             f.close()
             filemode = getmode(fn)
-            
+
             newentry = (relfn, (hexdigest, filemode))
 
             # Add to complete list.
@@ -223,12 +225,18 @@ def backup_files( root, incrdirs, incrfiles, hist_contents, outfn ):
     t1 = hinfo.mtime
     tar.addfile(hinfo, hfile)
 
-    # add all the incrementatl directories
+    # add all the incremental directories
     for reldn, attrs in incrdirs:
+        if opts.verbose:
+            print "Adding...", reldn
+
         tar.add(join(root, reldn), reldn, recursive=False)
 
     # add all the incremental files to be backed up
     for relfn, attrs in incrfiles:
+        if opts.verbose:
+            print "Adding...", relfn
+
         tar.add(join(root, relfn), relfn)
 
     tar.close()
@@ -325,17 +333,20 @@ def main():
             archdir = tempfile.gettempdir() # put the archive there temporarily
     else:
         archdir = tempfile.gettempdir()
-        
+
     # Compile and check regular expressions.
     try:
         excludes = [re.compile(x) for x in opts.exclude]
     except re.error, e:
         raise SystemExit("Error: could not compile regexp %s" % e)
-        
+
+    if opts.verbose:
+        print "=== Checking directories"
+
     # Check root directory.
     if not exists(root):
         raise SystemExit("Error: directory to backup does not exist %s" % root)
-        
+
     # Check archive directory.
     if remote_host is None:
         if not exists(archdir):
@@ -343,7 +354,7 @@ def main():
     else:
         if not exists_remote_dir(remote_host, remote_dir):
             raise SystemExit("Error: The remote archive directory must exist.")
-        
+
     if opts.history is None:
         opts.history = abspath(join(root, history_fn))
 
@@ -364,7 +375,7 @@ def main():
 
     # Find the entire list of files, and the list of files to backup.
     if opts.verbose:
-        print '=== Finding list of files to backup.'
+        print '=== Finding list of files to backup'
     (alldirs, incrdirs,
      allfiles, incrfiles) = find_files(root, histfiles, excludes)
 
@@ -385,7 +396,7 @@ def main():
 
     # Compute contents of the new history file.
     if opts.verbose:
-        print '=== Creating history file.'
+        print '=== Creating history file'
     hist_contents = create_history_file(alldirs, allfiles)
 
     # Determine name of the backup file.
@@ -398,13 +409,13 @@ def main():
     try:
         # Do backups...
         if opts.verbose:
-            print "=== Filling up archive '%s'." % outfn
+            print "=== Filling up archive '%s'" % outfn
         backup_files(root, incrdirs, incrfiles, hist_contents, outfn)
 
         # Encrypt the file with the given key if requested.
         if opts.encrypt:
             if opts.verbose:
-                print '=== Encrypting archive.'
+                print '=== Encrypting archive'
 
             encfn = '%s.gpg' % outfn
             p = Popen(['gpg', '--encrypt', '--recipient=%s' % opts.encrypt,
@@ -419,7 +430,7 @@ def main():
                 s += sout + '\n' + serr + '\n'
                 s += '(Backup aborted due to errors.  File deleted/not sent.)'
                 raise SystemExit(s)
-                
+
         # Send the backup file to its remote host if requested.
         if remote_host:
             if opts.verbose:
@@ -433,10 +444,10 @@ def main():
                 raise SystemExit(
                     "Error: copying the file to remote host (%s)" %
                     sout + os.linesep + serr)
-            
+
             # Clean up temporary files.
             if opts.verbose:
-                print '=== Cleaning up.'
+                print '=== Cleaning up'
 
             os.remove(outfn)
 
@@ -462,7 +473,7 @@ def main():
 
     # The last line will contain the name of the output archive file.
     if opts.verbose:
-        print "=== Done."
+        print "=== Done"
 
     print outfn
     return 0
