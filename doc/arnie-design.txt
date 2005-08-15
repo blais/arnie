@@ -1,6 +1,6 @@
-==========================================
-  Simple Incremental Backups (Encrypted)
-==========================================
+===========================================
+  Arnie Simple Incremental Backups System
+===========================================
 
 :Author: Martin Blais <blais@furius.ca>
 :Date: 2005-07-23

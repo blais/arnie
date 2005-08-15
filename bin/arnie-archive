@@ -20,8 +20,8 @@
 """
 arnie-archive [<options>] <root> [<arch-dir>]
 
-Simple Increment Backups Archiver program.  This program creates a simple
-archive of files that have changed since it was last run.
+Arnie archiver program (simple incremental backups system).  This program
+creates a simple archive of files that have changed since it was last run.
 
 The first line it outputs on stdout is the name of the archive file that gets
 created.  If no archive output directory is supplied, the backup file is created

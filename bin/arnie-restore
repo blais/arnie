@@ -20,14 +20,14 @@
 """
 arnie-restore [<options>] <arch-dir> <restoredir> [<file-or-dir> ...]
 
-Simple Increment Backups Restorer program.  This program restores a backup
-created by the corresponding archiver program.  The user specifies a directory
-where the backup files are assumed to be present (and readable/decrypted, with
-the approprite naming convention for dates) and a target directory that
-specifies where to restore files (which has to be either non-existent or empty).
-Optionally, you can specify a list of directories or files to restore (default
-is to restore all), which should be a list of filenames relative to the backup
-root.
+Arnie restorer program (simple incremental backups system).  This program
+restores a backup created by the corresponding archiver program.  The user
+specifies a directory where the backup files are assumed to be present (and
+readable/decrypted, with the approprite naming convention for dates) and a
+target directory that specifies where to restore files (which has to be either
+non-existent or empty).  Optionally, you can specify a list of directories or
+files to restore (default is to restore all), which should be a list of
+filenames relative to the backup root.
 
 See documentation at http://furius.ca/arnie for more details.
 """
