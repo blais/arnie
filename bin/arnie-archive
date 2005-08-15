@@ -392,6 +392,7 @@ def main():
         outfn = backup_files(root, incrdirs, incrfiles, hist_contents, pfxoutfn)
 
         # Encrypt the file with the given key if requested.
+	encfn = None
         if opts.encrypt:
             encfn = '%s.gpg' % outfn
             p = Popen(['gpg', '--encrypt', '--recipient=%s' % opts.encrypt,
@@ -420,6 +421,8 @@ def main():
     finally:
         if remote_host:
             os.remove(outfn)
+	    if encfn and exists(encfn):
+	        os.remove(encfn) # This can occur if encryption fails.
             outfn = '%s:%s' % (remote_host, remote_dir)
 
     # Overwrite the history file.
