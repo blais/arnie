@@ -403,7 +403,7 @@ def main():
                 outfn = encfn
             else:
                 raise SystemExit(
-                    "Error: encrypting the file (%s)" %
+                    "Error: encrypting the file (%s)\n" % p.returncode +
                     sout + os.linesep + serr)
                 
         # Send the backup file to its remote host if requested.
