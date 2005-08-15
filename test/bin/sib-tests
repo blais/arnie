@@ -1,0 +1,929 @@
+#!/usr/bin/env python
+# -*- coding: iso-8859-1 -*-
+#
+# $Id$
+#
+
+"""
+Run Simple Incremental Backup tests.
+"""
+
+# stdlib imports
+import os, unittest, StringIO, filecmp, stat, random, shutil
+import tarfile, string, types, time, datetime
+from os.path import *
+from subprocess import Popen, PIPE
+from pprint import pprint, pformat
+
+# get root of projects
+projdir = __file__
+while basename(projdir) != 'sib':
+    projdir = dirname(projdir)
+
+# specify test root temporary directory
+testroot = '/tmp/sib'
+
+encrypt_key = 'D1775F1D'
+
+history_fn = '.sibhistory'
+
+#-------------------------------------------------------------------------------
+#
+def print_header( s ):
+    """
+    Prints some separator header.
+    """
+    print '>>>>>>>>>>', s
+
+#-------------------------------------------------------------------------------
+#
+def prepare_dir( root ):
+    """
+    Prepare the source directory before running the tests.
+    """
+    print_header('Cleaning up the test root: %s' % root)
+    rmrf(root)
+    os.mkdir(root)
+
+#-------------------------------------------------------------------------------
+#
+def rmrf( fnodn ):
+    """
+    Delete the given directory and all its contents.
+    """
+    if not exists(fnodn):
+        return
+
+    if isdir(fnodn):
+        for root, dirs, files in os.walk(fnodn, topdown=False):
+            for fn in files:
+                os.remove(join(root, fn))
+            for dn in dirs:
+                os.rmdir(join(root, dn))
+        os.rmdir(root)
+    else:
+        os.remove(fnodn)
+
+#-------------------------------------------------------------------------------
+#
+def random_dir( aroot ):
+    """
+    Walk the tree of subdirectories under the given root and return a random
+    directory.
+    """
+    while 1:
+        for root, dirs, files in os.walk(aroot):
+            if dirs and random.random() < 0.1:
+                return join(root, random.choice(dirs))
+
+#-------------------------------------------------------------------------------
+#
+def random_file( aroot ):
+    """
+    Walk the tree of subdirectories under the given root and return a random
+    file.
+    """
+    while 1:
+        for root, dirs, files in os.walk(aroot):
+            if files and random.random() < 0.1:
+                return join(root, random.choice(files))
+
+#-------------------------------------------------------------------------------
+#
+def new_filename( root ):
+    """
+    Find some new random original filename that does not already exist in the
+    given directory.  This returns the absolute filename.
+    """
+    while 1:
+        newname = join(root, ''.join(random.sample(string.ascii_letters,
+                                                   random.randint(5, 10))))
+        if not exists(newname):
+            return newname
+
+#-------------------------------------------------------------------------------
+#
+def create_small_file( fn ):
+    """
+    Create some small file with little random contents.
+    """
+    f = file(fn, 'w')
+    l = []
+    for i in xrange(random.randint(5, 200)):
+        l.append(random.choice(string.ascii_letters))
+    f.write(''.join(l))
+    f.close()
+
+#-------------------------------------------------------------------------------
+#
+def runprint( cmd ):
+    """
+    Run a command, wait, print its results, make sure that it returns 0.
+
+    :Arguments:
+    - cmd: the command to be runned -> list of strings
+    """
+    print '[ cmd:', ' '.join(cmd), ']'
+    p = Popen(cmd, stdout=PIPE, stderr=PIPE)
+    sout, serr = p.communicate()
+    print sout
+    print serr
+    return sout, serr, p.returncode
+
+#-------------------------------------------------------------------------------
+#
+def source_populate( root, nfiles=30 ):
+    """
+    Create a new directory and populate it with some random content.
+
+    :Arguments:
+    - root: the new root directory to create and populate
+    - nfiles: the number of files to create
+    """
+    print_header('Populating %s' % root)
+    runprint(['random-tree-gen', '--verbose', '--nb-files=%d' % nfiles, root])
+
+#-------------------------------------------------------------------------------
+#
+def source_edit( root ):
+    """
+    Randomly edit a hierarchy of files.
+
+    :Arguments:
+    - root: the root of the files to randomly edit.
+    """
+    print_header('Editing %s' % root)
+    runprint(['random-tree-edit', '-I', join(root, '.sibhistory'), root])
+
+
+#-------------------------------------------------------------------------------
+#
+perms = [stat.S_ISUID, stat.S_ISGID, stat.S_ENFMT, stat.S_ISVTX, stat.S_IREAD,
+         stat.S_IWRITE, stat.S_IEXEC, stat.S_IRWXU, stat.S_IRUSR, stat.S_IWUSR,
+         stat.S_IXUSR, stat.S_IRWXG, stat.S_IRGRP, stat.S_IWGRP, stat.S_IXGRP,
+         stat.S_IRWXO, stat.S_IROTH, stat.S_IWOTH, stat.S_IXOTH]
+
+def set_random_permissions( root, prob=0.4 ):
+    """
+    Randomly change the permissions of many files under the specified directory.
+
+    :Returns: a list of the changed files.
+    """
+
+    # Randomly set some permissions on the source files.
+    changed = []
+    for root, dirs, files in os.walk(root):
+        for fn in files:
+            if random.random() < 0.5:
+                newperms = random.choice(perms) | stat.S_IRWXU
+                print 'Chmoding %s to %s' % (fn, newperms)
+                changed.append(join(root, fn))
+                os.chmod(join(root, fn), newperms)
+    return changed
+
+#-------------------------------------------------------------------------------
+#
+def archive( root, backupdir, options=[], expstatus=0 ):
+    """
+    Run the archiver on the given root directory.
+    """
+    print_header('Backup %s' % root)
+    cmd = [join(projdir, 'bin', 'sib-archive')] + options + [root, backupdir]
+    sout, serr, status = runprint(cmd)
+    if status == 0:
+        archfn = sout.splitlines()[-1].strip()
+    else:
+        archfn = ''
+    assert status == expstatus
+    return archfn, status
+
+#-------------------------------------------------------------------------------
+#
+def restore( backupdir, restoredir, reslist=[], options=[] ):
+    """
+    Run the archiver on the given root directory.
+    """
+    print_header('Restore %s to %s' % (backupdir, restoredir))
+    cmd = [join(projdir, 'bin', 'sib-restore')] + options + \
+          [backupdir, restoredir] + reslist
+    sout, serr, errcode = runprint(cmd)
+    return errcode
+
+#-------------------------------------------------------------------------------
+#
+def compare_dirs( dir1, dir2, ignore_files=[] ):
+    """
+    Compare the contents of two directories recursively for differences.
+
+    This function returns a string with differences if they were found, and
+    nothing otherwise.
+    """
+    print_header('Comparing %s <==> %s' % (dir1, dir2))
+
+    dircomp = filecmp.dircmp(dir1, dir2)
+    err = StringIO.StringIO()
+
+    def report( self ):
+        for ign in ignore_files:
+            for l in (self.left_only, self.right_only, self.diff_files,
+                      self.funny_files, self.common_funny):
+                if ign in l:
+                    l.remove(ign)
+
+##         for cfn in self.common:
+##             if cfn.endswith('lnk'):
+##                 print 'Common', cfn
+## ## FIXME remove
+
+        e = 0
+        if self.left_only:
+            print >> err, 'Only in', self.left, ':', self.left_only
+            e = 1
+        if self.right_only:
+            print >> err, 'Only in', self.right, ':', self.right_only
+            e = 1
+        if self.diff_files:
+            print >> err, 'Differing files :', self.diff_files
+            e = 1
+        if self.funny_files:
+            print >> err, 'Trouble with common files :', self.funny_files
+            e = 1
+        if self.common_funny:
+            print >> err, 'Common funny cases :', self.common_funny
+            e = 1
+
+        # Check permissions
+        for dn in self.common:
+            dn1, dn2 = [join(x, dn) for x in [self.left, self.right]]
+            stat1, stat2 = [os.stat(x) for x in [dn1, dn2]]
+            if stat1.st_mode != stat2.st_mode:
+                print 'Files:', dn1, dn2
+                print '   Different permissions:', stat1.st_mode, stat2.st_mode
+
+        for sd in self.subdirs.itervalues():
+            e += report(sd)
+        return e
+
+    report(dircomp)
+    return err.getvalue()
+
+#===============================================================================
+# TEST CLASSES
+#===============================================================================
+
+class BaseTest(unittest.TestCase):
+    """
+    Base class for all test cases.
+
+    This takes care of generating a directory with random stuffs in it and
+    contains some utility functions.
+    """
+    def __init__( self ):
+        unittest.TestCase.__init__(self, 'test')
+        self.src, self.back, self.rest = self.setup()
+
+    def getroot( self ):
+        return join(testroot, self.__class__.__name__)
+
+    def setup( self ):
+        """
+        Prepare and generate a source directory and a backup location and return
+        these as a pair.
+        """
+        self.root = root = self.getroot()
+        os.mkdir(root)
+
+        sourcedir = join(root, 'source')
+        source_populate(sourcedir)
+
+        backupdir = join(root, 'backups')
+        os.mkdir(backupdir)
+
+        restoredir = join(root, 'restore')
+
+        return sourcedir, backupdir, restoredir
+
+    def test( self ):
+        raise NotImplementedError
+
+    def restore_and_compare( self, expected_retcode=0 ):
+        # restore the latest
+        retcode = restore(self.back, self.rest)
+        assert retcode == expected_retcode
+
+        if expected_retcode == 0:
+            # compare source to restored
+            errors = compare_dirs(self.src, self.rest, ['.sibhistory'])
+            if errors:
+                print errors
+            assert not errors
+        else:
+            print "(Its OK ...Was expecting errors)"
+
+#-------------------------------------------------------------------------------
+#
+class TestSimple(BaseTest):
+    """
+    Simple normal succesfull backup-restore test.
+    """
+    archopts = []
+
+    def test( self ):
+        # set some funky permissions to check if they are maintained
+        # (the comparison at the end detects different permissions)
+        set_random_permissions(self.src)
+
+        # a few iterations of archive/edit
+        archive(self.src, self.back, self.archopts)
+        source_edit(self.src)
+
+        archive(self.src, self.back, self.archopts)
+        source_edit(self.src)
+
+        archive(self.src, self.back, self.archopts)
+
+        self.restore_and_compare()
+
+#-------------------------------------------------------------------------------
+#
+class TestAltHistory(TestSimple):
+    """
+    Test with history file in an alternate user-specified location.
+    """
+    def __init__( self ):
+        TestSimple.__init__(self)
+
+        # Add an option to the archive to test with an history file in an
+        # alternate location
+        os.mkdir(join(self.root, 'run'))
+        self.archopts = ['--history=%s' % join(self.root, 'run', 'history_fn')]
+
+#-------------------------------------------------------------------------------
+#
+class TestMultiFull(BaseTest):
+    """
+    Test multiple full backups by using the appropriate option to archive.
+    """
+    def test( self ):
+        # a few iterations of archive/edit
+        archive(self.src, self.back)
+        source_edit(self.src)
+        archive(self.src, self.back)
+        source_edit(self.src)
+        archive(self.src, self.back)
+
+        # remove the history file to trigger a full backup
+        self.full_archive()
+
+        # a few iterations of archive/edit
+        source_edit(self.src)
+        archive(self.src, self.back)
+
+        # check the sizes of the backup files, we make sure that the largest
+        # ones are the ones we expect to the full backups
+        bfiles = [(os.path.getsize(join(self.back, x)), i, x)
+                  for i, x in enumerate(os.listdir(self.back))]
+        bfiles.sort()
+        bfiles.reverse()
+        assert set(bfiles[x][1] for x in (0, 1)) == set( (0, 3) )
+
+        self.restore_and_compare()
+
+    def full_archive( self ):
+        archive(self.src, self.back, ['--full'])
+
+class TestMultiFull1(TestMultiFull):
+    """
+    Multiple full backups by deleting the history file.
+    """
+    def full_archive( self ):
+        os.remove(join(self.src, history_fn))
+        archive(self.src, self.back)
+
+
+#-------------------------------------------------------------------------------
+#
+class TestMissing(BaseTest):
+    """
+    Test restore with missing files, by removing some archives in the middle of
+    a sequence.
+    """
+
+    def test( self ):
+        # a few iterations of archive/edit
+        archives = []
+        for x in xrange(5):
+            afn, status = archive(self.src, self.back)
+            archives.append(afn)
+            if x == 4:
+                break
+            source_edit(self.src)
+
+        # remove some intermediate files
+        os.remove(archives[1])
+        os.remove(archives[3])
+
+        self.restore_and_compare(1)
+
+#-------------------------------------------------------------------------------
+#
+class TestCompression(BaseTest):
+    """
+    Test various compression schemes.
+    """
+    def test( self ):
+        # archive without compression
+        archive(self.src, self.back)
+        retcode = restore(self.back, self.rest)
+        assert retcode == 0
+
+        source_edit(self.src)
+
+        # gzip compression
+        archive(self.src, self.back, ['--compression=gz'])
+        os.mkdir(self.rest + '1')
+        retcode = restore(self.back, self.rest + '1')
+        assert retcode == 0
+
+        source_edit(self.src)
+
+        # bzip2 compression
+        archive(self.src, self.back, ['--compression=bz2'])
+        os.mkdir(self.rest + '2')
+        retcode = restore(self.back, self.rest + '2')
+        assert retcode == 0
+
+#-------------------------------------------------------------------------------
+#
+class TestNoLocalArchDir(BaseTest):
+    """
+    Test archive to a local directory which does not exist.
+    """
+    host = None
+
+    def test( self ):
+        os.rmdir(self.back)
+        if self.host:
+            self.back = '%s:%s' % (self.host, self.back)
+        archfn = archive(self.src, self.back, expstatus=1)
+
+class TestNoRemoteArchDir(TestNoLocalArchDir):
+    """
+    Test archive to a remote directory which does not exist.
+    """
+    host = 'localhost'
+
+#-------------------------------------------------------------------------------
+#
+class TestEmptyUpdate(BaseTest):
+    """
+    Test with an update that does not contain any changes.
+    """
+    def test( self ):
+        # first backup
+        archive(self.src, self.back)
+
+        # empty archive
+        archive(self.src, self.back)
+
+        archives = sorted(os.listdir(self.back))
+        assert len(archives) == 2
+        self.restore_and_compare()
+
+        tar = tarfile.open(join(self.back, archives[1]), 'r')
+        assert len(tar.getnames()) == 1 # just the history file
+
+class TestNoEmpty(BaseTest):
+    """
+    Test skipping empty backups.
+    """
+    def test( self ):
+        archive(self.src, self.back)
+
+        # Backup with empty skip options.
+        archive(self.src, self.back, ['--no-empty'], expstatus=2)
+        assert len(os.listdir(self.back)) == 1
+
+        # Once again.
+        archive(self.src, self.back, ['--no-empty'], expstatus=2)
+        assert len(os.listdir(self.back)) == 1
+
+        # Edit and backup.
+        source_edit(self.src)
+        archive(self.src, self.back, ['--no-empty'])
+        assert len(os.listdir(self.back)) == 2
+
+        # Backup with empty skip options.
+        archive(self.src, self.back, ['--no-empty'], expstatus=2)
+        assert len(os.listdir(self.back)) == 2
+
+#-------------------------------------------------------------------------------
+#
+class TestChmodOnly(BaseTest):
+    """
+    Test with chmod only.
+    """
+    def test( self ):
+        # first backup
+        archive(self.src, self.back)
+
+        # chmod directory and file
+        os.chmod(random_dir(self.src), 0700)
+        os.chmod(random_file(self.src), 0700)
+
+        # backup new archive
+        archive(self.src, self.back)
+
+        self.restore_and_compare()
+
+#-------------------------------------------------------------------------------
+#
+class TestAddDir(BaseTest):
+    """
+    Test just adding a single (empty) directory.
+    """
+    def test( self ):
+        archive(self.src, self.back)
+
+        # create a single new directory
+        dn = new_filename(self.src)
+        os.mkdir(dn)
+
+        # backup new archive
+        afn, status = archive(self.src, self.back)
+
+        # check that the last archive has a single file in it, the new directory
+        tar = tarfile.open(afn, 'r')
+        assert len(tar.getnames()) == 2 # history file and the new directory
+
+        self.restore_and_compare()
+
+#-------------------------------------------------------------------------------
+#
+class TestRestoreDir(BaseTest):
+    """
+    Test restoring to a directory that already exists.
+    """
+    def test( self ):
+        archive(self.src, self.back)
+
+        os.mkdir(self.rest)
+        self.restore_and_compare()
+
+        create_small_file(new_filename(self.rest))
+
+        self.restore_and_compare(1)
+
+#-------------------------------------------------------------------------------
+#
+class TestArchivePrefix(BaseTest):
+    """
+    Test the archive prefixes.
+    """
+    def test( self ):
+        archive(self.src, self.back, ['--prefix', 'myarchive'])
+        archive(self.src, self.back, ['--prefix', 'myarchive'])
+        archive(self.src, self.back, ['--prefix', 'myarchive'])
+
+        for fn in os.listdir(self.back):
+            assert fn.startswith('myarchive.')
+
+#-------------------------------------------------------------------------------
+#
+class TestRemote(BaseTest):
+    """
+    Test archive to a local directory which does not exist.
+    """
+    def __init__( self ):
+        BaseTest.__init__(self)
+        self.localback = self.back
+        self.back = 'localhost:' + self.back
+
+    def test( self ):
+        # a few iterations of archive/edit
+        archive(self.src, self.back)
+        source_edit(self.src)
+
+        archive(self.src, self.back)
+
+        assert len(os.listdir(self.localback)) == 2
+
+#-------------------------------------------------------------------------------
+#
+class TestEncrypted(BaseTest):
+    """
+    Test encrypted archives.
+    """
+    def test( self ):
+        afn, status = archive(self.src, self.back, ['--encrypt=%s' % encrypt_key])
+        assert afn.endswith('.gpg')
+
+class TestEncryptedBadKey(BaseTest):
+    """
+    Test encrypting with a bad key.
+    """
+    def test( self ):
+        archive(self.src, self.back, ['--encrypt=UHuhsdhdsuhdsuh'], expstatus=1)
+        print '(Errors were expected.)'
+
+#-------------------------------------------------------------------------------
+#
+class TestFilenamesWithSpaces(BaseTest):
+    """
+    Test archives with filenames with spaces and/or funny characters in them.
+    """
+    def test( self ):
+        nfn = join(random_dir(self.src), "I have Spaces")
+        print 'Filename with spaces:', nfn
+        create_small_file(nfn)
+
+        archive(self.src, self.back)
+        self.restore_and_compare()
+
+
+#-------------------------------------------------------------------------------
+#
+class TestSimulatedTime(BaseTest):
+    """
+    Test archives with simulated time used for further dated tests.
+    (In other words, test the test option before we rely on it for our tests.)
+    """
+    def test( self ):
+        tomorrow = datetime.datetime.now() + datetime.timedelta(days=1)
+        timestr = tomorrow.strftime('%Y-%m-%d.%H%M%S00')
+        tomorrow = time.mktime(tomorrow.timetuple())
+        archive(self.src, self.back, ['--test-time=%d' % tomorrow])
+        archfn = os.listdir(self.back)[0]
+        assert timestr in archfn
+        print 'Asserted', timestr, 'in', archfn
+
+
+class TestDated(BaseTest):
+    """
+    Test archives with specific restore date.
+    """
+    def test( self ):
+
+        # Create various backups and take snapshots at each point.
+        packs = []
+        t = datetime.datetime.now()
+        for i in xrange(4):
+            t += datetime.timedelta(seconds=random.randint(0, 59))
+            archive(self.src, self.back,
+                    ['--test-time=%d' % time.mktime(t.timetuple())])
+
+            # Copy original source as it was at the time of backup.
+            srcdir = self.src + '.%d' % i
+            shutil.copytree(self.src, srcdir)
+
+            packs.append( (t, srcdir) )
+
+            # Edit and advance time.
+            source_edit(self.src)
+            t += datetime.timedelta(days=1)
+
+        # Try dated restore with date previous to the first backup and expect
+        # errors.
+        tbefore = packs[0][0] - datetime.timedelta(days=1)
+        retcode = restore(self.back, self.rest, options=['--time=%s' % tbefore])
+        assert retcode == 1
+
+        # Try dated restores with simple dates.
+        for i, pack in enumerate(packs):
+            t, srcdir = pack
+
+            d = t.date() + datetime.timedelta(days=1)
+            print_header('Attempting dated restore at %s\n' % d +
+                         "Comparing with '%s'" % srcdir)
+
+            # Perform the restore at the given date/time.
+            restdir = self.rest + 'a.%d' % i
+            retcode = restore(self.back, restdir, options=['--time=%s' % d])
+            assert retcode == 0
+
+            # Compare source snapshot to restored.
+            errors = compare_dirs(srcdir, restdir, ['.sibhistory'])
+            if errors:
+                print errors
+            assert not errors
+
+        # Try dated restores with date+time.
+        for i, pack in enumerate(packs):
+            t, srcdir = pack
+            t += datetime.timedelta(seconds=10)
+            tstr = t.strftime('%Y-%m-%dT%H:%M:%S')
+            print_header('Attempting dated restore at %s\n' % tstr +
+                         "Comparing with '%s'" % srcdir)
+
+            # Perform the restore at the given date/time.
+            restdir = self.rest + 'b.%d' % i
+            retcode = restore(self.back, restdir, options=['--time=%s' % tstr])
+            assert retcode == 0
+
+            # Compare source snapshot to restored.
+            errors = compare_dirs(srcdir, restdir, ['.sibhistory'])
+            if errors:
+                print errors
+            assert not errors
+
+#-------------------------------------------------------------------------------
+#
+class TestExcludes(BaseTest):
+    """
+    Test with exclusions.
+    """
+    def test( self ):
+        # Test with an invalid regular expression pattern
+        archive(self.src, self.back, ['--exclude=*bli.*'], expstatus=1)
+
+        for i in xrange(2):
+            dn = random_dir(self.src)
+            fn = join(dn, 'bli.' + basename(new_filename(dn)))
+            create_small_file(fn)
+
+        for i in xrange(2):
+            dn = random_dir(self.src)
+            fn = join(dn, basename(new_filename(dn)) + '.bli')
+            create_small_file(fn)
+
+        # Test with excluding files.
+        archive(self.src, self.back, ['--exclude=.*bli.*'])
+        retcode = restore(self.back, self.rest + '.f')
+        assert retcode == 0
+
+        # Check that 4 files with bli are missing.
+        errors = compare_dirs(self.src, self.rest + '.f', ['.sibhistory'])
+        assert errors
+        lines = errors.strip().splitlines()
+        for l in lines:
+            assert 'bli' in l
+
+        # Test with excluding dirs.
+        exdn = random_dir(self.src)
+        # Note: we will assume that the directory name is unique here.
+        archive(self.src, self.back, ['--exclude=%s' % basename(exdn)])
+        retcode = restore(self.back, self.rest + '.d')
+        assert retcode == 0
+
+        # Check that some directory is missing.
+        errors = compare_dirs(self.src, self.rest + '.d', ['.sibhistory'])
+        assert errors
+        print errors
+
+
+#-------------------------------------------------------------------------------
+#
+class TestSymLinks(BaseTest):
+    """
+    Test with symbolic links.
+    """
+    def test( self ):
+        # Create some symbolic link.
+        fn = random_file(self.src)
+        lfn = fn + '.lnk'
+        os.symlink(basename(fn), lfn)
+        print 'Created symlink', lfn, '->', basename(fn)
+
+        archive(self.src, self.back)
+        self.restore_and_compare()
+
+        restored_link = join(self.rest, lfn[len(self.src)+1:])
+        print 'Checking', restored_link
+        assert islink(restored_link)
+
+#-------------------------------------------------------------------------------
+#
+class TestRootPerms(BaseTest):
+    """
+    Test root permissions not being restored.
+    """
+    def test( self ):
+        # Set the root permissions to something different than the umask
+        os.chmod(self.src, 0731)
+
+        archive(self.src, self.back)
+        self.restore_and_compare()
+        
+        
+#-------------------------------------------------------------------------------
+#
+class TestPartial(BaseTest):
+    """
+    Test root permissions not being restored.
+    """
+    def test( self ):
+        archive(self.src, self.back)
+
+        def check_one_up( dn, root ):
+            """
+            Check that from dn to root, there is always a single directory
+            entry.
+            """
+            dn = join(root, dirname(dn))
+            root = dirname(root)
+            while dn != root:
+                assert len(os.listdir(dn)) == 1
+                dn = dirname(dn)
+
+        for i, fn in enumerate([random_dir(self.src)[len(self.src)+1:],
+                                random_file(self.src)[len(self.src)+1:]]):
+            
+            print 'Partial restore for:', fn
+            print
+            rest = self.rest + '.%d' % i
+            retcode = restore(self.back, rest, [fn])
+            assert retcode == 0
+            check_one_up(fn, rest)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##==============================================================================
+## ADD NEW TEST HERE, LOOK AT EXAMPLES ABOVE FOR INSPIRATION.
+##==============================================================================
+##
+## class TestXXXXXXX(BaseTest):
+##     """
+##     Test that someone else will add... (UPDATE DESCRIPTION)
+##     """
+##     def test( self ):
+##         # At this point you have a valid source directory in self.src, and a
+##         # backup and restore location under self.back and self.rest.  The root
+##         # for all files for your test is under self.root.
+##         #
+##         # ... write some use case here (see examples above)
+##         ...
+
+
+#===============================================================================
+# MAIN
+#===============================================================================
+
+#-------------------------------------------------------------------------------
+#
+"""
+Test suites, including and automatically generated list of all tests.
+"""
+all = []
+for symbol, obj in globals().copy().iteritems():
+    if isinstance(obj, types.TypeType) and \
+           issubclass(obj, BaseTest) and \
+           symbol.startswith('Test'):
+        all.append(obj)
+
+simple = [ TestSimple ]
+
+current = [ TestPartial ]
+
+#-------------------------------------------------------------------------------
+#
+def main():
+    """
+    Main test runner (simpler and more predictable than the crap in the unittest
+    module).
+    """
+    import optparse
+    parser = optparse.OptionParser(__doc__.strip())
+    opts, args = parser.parse_args()
+
+    # get the specified test suite.
+    if not args:
+        suitename = 'current'
+    else:
+        suitename = args[0]
+    try:
+        thesuite = globals()[suitename]
+    except KeyError:
+        raise SystemExit(
+            "Test runner error: could not find suite '%s'" % suitename)
+
+    # prepare test directory location
+    prepare_dir(testroot)
+
+    for testcls in thesuite:
+        assert testcls.__doc__
+
+        print os.linesep * 5
+        print ' ,' + '=' * 80
+        print ' | TEST', testcls.__name__
+        print os.linesep.join(' | %s' % x for x in testcls.__doc__.splitlines())
+        print ' `' + '=' * 80
+        print
+        testcls().test()
+
+
+if __name__ == '__main__':
+    main()
+

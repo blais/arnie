@@ -1,0 +1,94 @@
+#!/usr/bin/env python
+#
+# Copyright (C) 2005  Martin Blais <blais@furius.ca>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+
+"""
+sib-is-full [<options>] <arch-file>
+
+Check if the backup includes all the files that are mentioned in its contained
+history file.  The script takes a single archive file and exits with 0 if the
+archive is a full backup, with 1 if incremental only.
+
+See design documentation at http://furius.ca/sib for more details.
+"""
+
+import sys, os, tarfile
+from os.path import *
+
+history_fn = '.sibhistory'
+
+
+def read_history( histfile ):
+    """
+    Read the history file.
+    If the history file cannot be found, returns an empty list.
+    Note: this is supposed to be able to support filenames with spaces.
+
+    Arguments:
+    - fn: the filename to read -> string
+
+    Returns: a dict of filename to crc key-values
+    """
+    files = {}
+    # have to read all lines at once for file from tarfile
+    for line in histfile.readlines():
+        crc = line.split()[0]
+        filename = normpath(line[len(crc)+1:].strip())
+        files[filename] = crc
+    return files
+
+
+def guess_compression( fn ):
+    """
+    Guess the compression of the file, using the filename extension.
+    """
+    if fn.endswith('.bz2'):
+        return 'bz2'
+    elif fn.endswith('.gz'):
+        return 'gz'
+    return ''
+
+
+def main():
+    """
+    Main program.
+    """
+    import optparse
+    parser = optparse.OptionParser(__doc__.strip())
+    opts, args = parser.parse_args()
+
+    if len(args) != 1:
+        parser.error("You must specify a single archive file.")
+    archfn, = args
+
+    # Read the history file from the lastest archive file
+    compression = guess_compression(archfn)
+    tar = tarfile.open(archfn, 'r:%s' % compression)
+    hfile = tar.extractfile(history_fn)
+    histfiles = read_history(hfile)
+
+    # Note: we need to ignore directories.
+    missing_files = frozenset(histfiles) - frozenset(tar.getnames())
+
+    if missing_files:
+        return 1
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

@@ -1,0 +1,15 @@
+==================
+  SIB Test Suite
+==================
+
+:Author: Martin Blais <blais@furius.ca>
+:Date: 2005-08-14
+
+
+To run the test suite, simply run ::
+
+   sib/test/bin/sib-tests all
+
+If anything fails (i.e. the script exits on an exception or error), that is a
+bug.  The test suite assumes that localhost is running an ssh daemon.
+

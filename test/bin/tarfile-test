@@ -1,0 +1,15 @@
+#!/usr/bin/env python
+"""
+tarfile does not seem to work?  Minimal test.
+"""
+
+import tarfile
+outfn = '/tmp/out.tar'
+
+tar = tarfile.open(outfn, "w")
+tar.add('/home/blais/p/conf/common/etc/emacsrc')
+tar.add('/home/blais/p/conf/common/etc/bashrc')
+tar.close()
+
+
+print 'Done.'

@@ -1,0 +1,405 @@
+#!/usr/bin/env python
+#
+# Copyright (C) 2005  Martin Blais <blais@furius.ca>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+
+"""
+sib-restore [<options>] <arch-dir> <restoredir> [<file-or-dir> ...]
+
+Simple Increment Backups Restorer program.  This program restores a backup
+created by the corresponding archiver program.  The user specifies a directory
+where the backup files are assumed to be present (and readable/decrypted, with
+the approprite naming convention for dates) and a target directory that
+specifies where to restore files (which has to be either non-existent or empty).
+Optionally, you can specify a list of directories or files to restore (default
+is to restore all), which should be a list of filenames relative to the backup
+root.
+
+See documentation at http://furius.ca/sib for more details.
+"""
+
+import sys
+if sys.version_info[:2] < (2, 4):
+    raise SystemExit("Error: you need Python >=2.4 to run this program.")
+
+import os, re, md5, datetime, StringIO, stat
+import tarfile
+from os.path import *
+
+history_fn = '.sibhistory'
+
+
+#-------------------------------------------------------------------------------
+#
+dircrc_re = re.compile('^\s+$')
+
+def read_history( histfile ):
+    """
+    Read the history file.
+    If the history file cannot be found, returns an empty list.
+    Note: this is supposed to be able to support filenames with spaces.
+
+    Arguments:
+    - fn: the filename to read -> string
+
+    Returns: a dict of entries.
+
+    Each entry consists in a tuple of (crc, mode) for the file.
+    If the file is a directory, the crc is None.
+    """
+    files = {}
+    # have to read all lines at once for file from tarfile
+    for line in histfile.readlines():
+        crc = line[0:32]
+        if dircrc_re.match(crc):
+            crc = None # directory
+        perms = int(line[33:39], 8)
+        filename = line[40:].strip()
+        files[filename] = (crc, perms)
+    return files
+
+#-------------------------------------------------------------------------------
+#
+def getmode( fn ):
+    """
+    Stat that does not follow symlinks that just returns the mode.
+    """
+    if hasattr(os, "lstat"):
+        statres = os.lstat(fn)
+    else:
+        statres = os.stat(fn)
+    return statres.st_mode
+
+#-------------------------------------------------------------------------------
+#
+def parse_datetime( dtstr ):
+    """
+    Parse a user-provided date/time string.
+
+    >>> parse_datetime('2005-08-09')
+    datetime.datetime(2005, 8, 9, 0, 0)
+
+    >>> parse_datetime('2005-08-10T09:30')
+    datetime.datetime(2005, 8, 10, 9, 30)
+
+    >>> parse_datetime('2005-08-10T09:30:47')
+    datetime.datetime(2005, 8, 10, 9, 30, 47)
+
+    >>> parse_datetime('2005-08-10 09:30:47')
+    datetime.datetime(2005, 8, 10, 9, 30, 47)
+
+    """
+    dtstr = dtstr.strip()
+
+    # Exception in case of error.
+    timeexit = SystemExit("Error: invalid time string '%s'" % dtstr)
+
+    # Parse the date portion.
+    datere = re.compile('^(\d\d\d\d)-(\d\d)-(\d\d)(.*)')
+    mo = datere.match(dtstr)
+    if not mo:
+        raise timeexit
+    restore_date = datetime.date(*map(int, mo.group(1, 2, 3)))
+    rest = dtstr[mo.start(4):].strip()
+    if rest:
+        # Parse the time.
+        timere = re.compile('^[Tt]?(\d\d):?(\d\d)?:?(\d\d)?$')
+        mo = timere.match(rest)
+        if not mo:
+            raise timeexit
+        restore_time = datetime.time(
+            *map(int, (mo.group(x) or 0 for x in xrange(1, 4))))
+    else:
+        restore_time = datetime.time()
+
+    return datetime.datetime.combine(restore_date, restore_time)
+
+#-------------------------------------------------------------------------------
+#
+def guess_compression( fn ):
+    """
+    Guess the compression of the file, using the filename extension.
+    """
+    if fn.endswith('.bz2'):
+        return 'bz2'
+    elif fn.endswith('.gz'):
+        return 'gz'
+    return ''
+
+#-------------------------------------------------------------------------------
+#
+def filenames2archivenames( histfiles ):
+    """
+    Convert a history contents description into a list of filenames suitable for
+    extraction from an archive.  Essentially, this means that directories end
+    with a slash. Also, the root directory becomes ./.  This renaming is
+    necessary to to the GNU tar format or the way the tarfile module stores the
+    filenames in the archive file.
+    """
+    filenames = []
+    for fn, attrs in histfiles.iteritems():
+        crc, mode = attrs
+        if fn == '':
+            fn = '.'
+        if stat.S_ISDIR(mode):
+            fn += '/'
+        filenames.append(fn)
+    return filenames
+
+#-------------------------------------------------------------------------------
+#
+def restore( histfiles, archives, restoredir ):
+    """
+    Restore the given fileset from the list of archives rooted at restoredir, in
+    the order that they are presented in.
+
+    :Arguments:
+    - histfiles: the set of filenames to extract
+    - archives: a list of archive filenames
+    - restoredir: root dir on which to restore the files
+
+    :Returns: list of files that have not been restored, new reduced history
+    """
+    fileset = set(filenames2archivenames(histfiles))
+
+    # Figure out how many backup files we will need to eventually open.
+    # Essentially, we are searching and extracting backwards in time in the
+    # archive files until all the files we are looking for are found.
+    for archfn in archives:
+        if not fileset:
+            break # We're done, bye bye
+
+        compression = guess_compression(archfn)
+        tar = tarfile.open(archfn, 'r:%s' % compression)
+        archfiles = set(tar.getnames())
+        archfiles.remove(history_fn) # should always be present
+
+        commonfiles = fileset & archfiles
+
+        print '=== Restore from:', archfn
+        for fn in sorted(commonfiles):
+            print fn
+            tar.extract(fn, restoredir)
+
+            # Note: the extract call also sets the appropriate permissions.
+            # However, we need to set the permissions on the restoredir
+            # explicitly.
+            if fn == '/':
+                tinfo = tar.gettarinfo(fn)
+                os.chmod(restordir, tinfo.mode)
+
+        print
+
+        fileset -= archfiles # set difference
+        tar.close()
+
+    return fileset
+
+
+#-------------------------------------------------------------------------------
+#
+def verify( histfiles, root ):
+    """
+    Verifies that the restored directory matches the filelist and attributes in
+    the original backup.
+
+    Arguments:
+    - histfiles: dictionary of relative filenames to attributes (crc, perms)
+    - root: directory where restore has been carried out
+    """
+    err = StringIO.StringIO()
+    errfmt = '  [ %-16s ]  %s'
+
+    # Check that all the files in the history have been restored appropriately.
+    for relfn, attrs in histfiles.iteritems():
+        # check existence
+        fn = join(root, relfn)
+        if not exists(fn):
+            print >> err, errfmt % ('missing-file', relfn)
+            continue
+
+        crc, mode = attrs
+
+        # Check mode.
+        if mode != getmode(fn):
+            print >> err, errfmt % ('invalid-mode', relfn)
+
+        if crc is not None:
+            f = open(fn, 'r')
+            hexdigest = md5.new(f.read()).hexdigest()
+            f.close()
+
+            if crc != hexdigest:
+                print >> err, errfmt % ('invalid-contents', relfn)
+
+    # Check that no extra files have been extracted in the restored directory.
+    # (This is not absolutely necessary but an extra precaution against internal
+    # coding errors.)
+    resfiles = set()
+    rlen = len(root) + 1
+    for rroot, dirs, files in os.walk(root):
+        relroot = rroot[rlen:]
+        resfiles.add(relroot)
+        for fn in files:
+            resfiles.add(join(relroot, fn))
+
+    for fn in resfiles ^ set(histfiles):
+        print >> err, errfmt % ('extra-file', fn)
+
+    return err.getvalue()
+
+
+#-------------------------------------------------------------------------------
+#
+def main():
+    """
+    Main program.
+    """
+    import optparse
+    parser = optparse.OptionParser(__doc__.strip())
+
+    parser.add_option('-p', '--prefix', action='store',
+                      default=None,
+                      help="Prefix for backup files.  Without a prefix all "
+                      "files in the archive directory are considered.")
+
+    parser.add_option('--no-verify', '--skip-verify', action='store_false',
+                      dest='verify', default=True,
+                      help="Skip verification")
+
+    parser.add_option('-t', '--time', '--timestamp', action='store',
+                      help="Specify the date/time of the backup to restore "
+                      "(inclusive).  Archives after the specified "
+                      "date/time will be ignored.  The format "
+                      "must be ISO8601 YYYY-MM-DD or YYYY-MM-DDThh:mm:ss or "
+                      "YYYY-MM-DD hh:mm:ss.  If only the date is specified "
+                      "(no time), assume midnight at the start of the day.")
+
+    opts, args = parser.parse_args()
+
+    if len(args) < 2:
+        parser.error("You must specify a directory containing the archives "
+                     "and a directory to extract the results to.")
+    archdir, restoredir = map(normpath, args[0:2])
+    restore_list = args[2:]
+
+    # Check the archive directory.
+    if not exists(archdir):
+        raise SystemExit("Error: The archive directory must exist.")
+
+    # Check the restore directory.
+    if not exists(restoredir):
+        try:
+            os.makedirs(restoredir)
+        except IOError, e:
+            raise SystemExit(
+                "Error: could not create output restore directory: %s" % e)
+    elif os.listdir(restoredir):
+        raise SystemExit(
+            "Error: files are present in the restore directory.\n"
+            "The Restore directory must be non-existent or empty.\n"
+            "Not restoring.")
+
+    # Get the sorted list of archive files.
+    archives = set(os.listdir(archdir))
+
+    # Ignore files that do not start with the given prefix.
+    if opts.prefix:
+        for fn in list(archives):
+            if not fn.startswith(opts.prefix):
+                archives.remove(fn)
+                print >> sys.stderr, "Warning: ignoring file '%s'" % fn
+
+    # Ignore files that are encrypted.
+    for fn in list(archives):
+        base, ext = splitext(fn)
+        if ext == '.gpg':
+            archives.remove(fn)
+            print >> sys.stderr, "Warning: ignoring encrypted archive '%s'" % fn
+
+    # Ignore files that are after the constrain date.
+    if opts.time:
+        # Parse the time specified by the user.
+        restore_time = parse_datetime(opts.time)
+
+        # Look at all the archive files and filter by time.
+        dre = re.compile('(\d\d\d\d)-(\d\d)-(\d\d)\\.(\d\d)(\d\d)(\d\d)(\d\d)')
+        for archfn in list(archives):
+            mo = dre.search(archfn)
+            if not mo:
+                raise SystemExit(
+                    "Error: filename '%s' needs to be date-formatted." % archfn)
+            arch_time = datetime.datetime(*map(int, mo.group(1, 2, 3, 4, 5, 6)))
+            if arch_time > restore_time:
+                archives.remove(archfn)
+
+    # Bail out if there are no archive files to restore from.
+    if not archives:
+        raise SystemExit("Error: no archive files to restore from.")
+
+    # Sort archives by date.
+    archives = [join(archdir, x) for x in reversed(sorted(list(archives)))]
+
+    # Pick the latest archive file.
+    lastfn = archives[0]
+
+    # Read the history file from the lastest archive file.
+    compression = guess_compression(lastfn)
+    tar = tarfile.open(lastfn, 'r:%s' % compression)
+    hfile = tar.extractfile(history_fn)
+    histfiles = read_history(hfile)
+    hfile.close()
+
+    # Reduce the history of files we need to restore if requested.
+    # Otherwise we keep the list intact (i.e. all files will be restored.)
+    if restore_list:
+        newhistfiles = {}
+        for resn in restore_list:
+            # Reduce the history to the list we are requested to restore.
+            for fn in histfiles.keys():
+                if fn.startswith(resn) or resn.startswith(fn):
+                    newhistfiles[fn] = histfiles[fn]
+        histfiles = newhistfiles
+
+    # Note: we can restore the directories in any order, and the permissions
+    # will be applied no matter what, before or after having been created,
+    # thanks to the tarfile module, so we can do that in a single pass.
+    remaining = restore(histfiles, archives, restoredir)
+
+    # Verify the restore.
+    rval = 0 # Return 0 if successful
+    if opts.verify:
+        errors = verify(histfiles, restoredir)
+        if errors:
+            print >> sys.stderr, \
+                  ('Errors: could not restore backup properly '
+                   '(see errors below).' + os.linesep)
+            print >> sys.stderr, errors
+            rval = 1 # return 1 if errors
+    elif remaining:
+        print >> sys.stderr, 'Error: not all files could be restored.'
+        rval = 1 # return 1 if errors
+
+    return rval
+
+
+def _test():
+    import doctest; doctest.testmod()
+
+if __name__ == '__main__':
+    sys.exit(main())
+

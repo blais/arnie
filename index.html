@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="iso-8859-1" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<meta name="generator" content="Docutils 0.3.10: http://docutils.sourceforge.net/" />
+<title>sib: Simple Incremental Backups</title>
+<link rel="stylesheet" href="style.css" type="text/css" />
+</head>
+<body>
+
+<div id="project-header">
+  <a href="/"><img src="/home/project-header.png" id="logo"></a>
+  
+</div>
+
+<div class="document" id="sib-simple-incremental-backups">
+<h1 class="title">sib: Simple Incremental Backups</h1>
+<div class="section" id="description">
+<h1><a name="description">Description</a></h1>
+<p>In a single sentence, SIB is: a tremendously <em>simple</em> system for performing
+incremental backups to remote untrusted hosts, with support for encrypted files
+on the remote host.  While our scripts are simple and recent, we believe they
+are robust and are in active use on the author's own servers, and we provide a
+comprehensive suite of tests to prove it.</p>
+<div class="section" id="context">
+<h2><a name="context">Context</a></h2>
+<p>Our goal is to provide a <em>very simple</em> and robust script to perform incremental
+backups.</p>
+<p>The original context for the creation of this program was that we had access to
+a remote but untrusted online host with plenty of storage, where we wanted to
+send backup archives of a source code repository.  We wanted incremental backups
+in order to minimize bandwidth requirements, and we wanted the archive files to
+be encrypted on the remote host (in case it gets broken into--it's untrusted).</p>
+<p>We tried many other open source offerings for this problem, such as dar,
+duplicity, hdup2, etc., but writing a few simple tests--<em>if you do not tests
+your backups, you have no backups</em>--brought problems to the surface with most of
+these systems, and more complex backup solutions like Amanda required more setup
+time and work to setup than writing my own simplistic solution.</p>
+<p>I suspect that the widespread availability of cheap online storage space
+(e.g. IBackup) will make this simple scheme for backups attractive for many
+other people.  This is why I provide this code as open source.</p>
+</div>
+<div class="section" id="basic-functioning-and-features">
+<h2><a name="basic-functioning-and-features">Basic Functioning and Features</a></h2>
+<p>The system consists in two self-contained Python scripts: the archiver
+(<tt class="docutils literal"><span class="pre">sib-archive</span></tt>) and the restorer (<tt class="docutils literal"><span class="pre">sib-restore</span></tt>).</p>
+<p>Essentially, the SIB archiver creates a tar archive with all the files that have
+changed since the last backup.  The history of what had been previously backed
+up is kept in a simple text file in the root of the archived directory
+(<tt class="docutils literal"><span class="pre">.sibhistory</span></tt>), and the full list of files available at the moment of backup
+is also included in the tar archive itself.  Optionally, the history file can be
+stored in an alternate location (see options).</p>
+<p>To archive, you typically run a command like this:</p>
+<pre class="literal-block">
+sib-archive /path/to/important-dir remotehost:/path/to/backups
+</pre>
+<p>The name of the archive file generated is output on stdout.  The date of the
+backup archive is contained in the filename, so do not rename the file (there is
+an option to select the prefix that the archive files are given).  To perform a
+full backup, invoke the archive script with the <tt class="docutils literal"><span class="pre">--full</span></tt> option, or simply
+delete the history file before running the archiver.</p>
+<p>Restoring backups is similarly very simple: we open the latest tar archive, get
+its list of necessary files to restore, and search backwards in time within all
+the available archive files to find them.  To restore, you login to the remote
+host (or fetch the archives locally) and run:</p>
+<pre class="literal-block">
+sib-restore /path/to/backups /path/to/restored-directory [&lt;dir/file&gt; ...]
+</pre>
+<p>The original archived directory will be restored to
+<tt class="docutils literal"><span class="pre">/path/to/restored-directory</span></tt>.  After re-creating the files, the restore
+script normally runs a verification of the MD5 sums of all the restored files,
+so if something ever went wrong you will be notified at that point.  If you do
+not want to restore the entire archive, you can specify the list of directories
+or files to restore (specified directories will be restored recursively).</p>
+<p>Note that if the backup files are encrypted, you will need to decrypt them
+manually before running the restorer, for example:</p>
+<pre class="literal-block">
+gpg --decrypt-files backup.*
+</pre>
+<p>The restorer will ignore encrypted files in the backups directory.</p>
+<div class="section" id="features">
+<h3><a name="features">Features</a></h3>
+<p>In addition, the following features are provided (see options):</p>
+<ul class="simple">
+<li>Automatically compress archives in gzip or bzip2 format;</li>
+<li>Automatically encrypt archives using a GnuPG key (specify the key Id or name);</li>
+<li>Automatically send the archive file to a remote host using scp.  This is just
+a convenience: alternatively you can capture the name of the archive and send
+it any way you like (ftp, other...);</li>
+<li>Tracks and restores permissions changes on directories and files;</li>
+<li>Works with empty directories;</li>
+<li>Works with symbolic links;</li>
+<li>An alternate location for the history file can be specified;</li>
+<li>Regexp patterns for excluding files in the backup can be provided;</li>
+<li>You can restore at any of the times the backups were made (the restore script
+has an option);</li>
+<li>The archives are simply stored as GNU tar files, so you can open them manually
+if so desired.</li>
+</ul>
+</div>
+<div class="section" id="caution">
+<h3><a name="caution">Caution</a></h3>
+<p>The SIB tools do <em>not</em> incrementally archive changes in user/group ids nor
+access, modification or creation times (however, they could very easily be
+modified to do so and I might do that at some point).  They do, however, track
+permission changes, and obviously added files, deleted files, and file content
+changes (the file comparison is carried out using a simple MD5 sum).</p>
+<p>Also note that the incremental archives produced by these programs are not of
+optimally minimal size, i.e. we do not store diffs, but rather we store entire
+files when they change, and we do not track file location moves.  Therefore this
+might not be a suitable solution if you have a large binary file from which only
+a few blocks are changing between backups (the entire file will be backed up
+every time).  Our solution is meant to work well on directories with many small
+to intermediate size files (such as a CVS source code repository).</p>
+</div>
+</div>
+</div>
+<div class="section" id="documentation">
+<h1><a name="documentation">Documentation</a></h1>
+<p>There is no special manual, the manual consists in this README file and the
+<tt class="docutils literal"><span class="pre">--help</span></tt> switch will provide ample details about invocation. Run the scripts
+like this to get full details:</p>
+<pre class="literal-block">
+sib-archive --help
+</pre>
+<p>Other files:</p>
+<ul class="simple">
+<li><a class="reference" href="CHANGES">CHANGES</a> <em>(news, recent changes, history)</em>;</li>
+<li><a class="reference" href="TODO">TODO</a> <em>(future features, wishlist)</em>;</li>
+<li><a class="reference" href="doc/sib-design.html">Design Notes (Internal Notes)</a>;</li>
+</ul>
+</div>
+<div class="section" id="download">
+<h1><a name="download">Download</a></h1>
+<p>The latest release is always available in the <a class="reference" href="/downloads/sib">download area</a>.</p>
+</div>
+<div class="section" id="installation-and-packaging">
+<h1><a name="installation-and-packaging">Installation and Packaging</a></h1>
+<p>Simply copy the <tt class="docutils literal"><span class="pre">sib/bin/sib-archive</span></tt> and <tt class="docutils literal"><span class="pre">sib/bin/sib-restore</span></tt> scripts to
+<tt class="docutils literal"><span class="pre">/usr/bin</span></tt>.</p>
+</div>
+<div class="section" id="testing">
+<h1><a name="testing">Testing</a></h1>
+<p>If you want to run the test suite, download the source code and see the
+instructions under the <tt class="docutils literal"><span class="pre">test</span></tt> subdirectory (very simple, one Python script to
+run).  In case you have a question, it should be extremely easy to add new tests
+to the test code.</p>
+</div>
+<div class="section" id="reporting-bugs">
+<h1><a name="reporting-bugs">Reporting Bugs</a></h1>
+<p>Send email to the author: Martin Blais &lt;<a class="reference" href="mailto:blais&#64;furius.ca">blais&#64;furius.ca</a>&gt;.</p>
+<p>If you would like to add new features, please contact the author for advice.
+Please contribute your changes or additional test code back to the author, we
+will be happy to include your changes if they are generic and could benefit
+others.</p>
+</div>
+<div class="section" id="installation">
+<h1><a name="installation">Installation</a></h1>
+<div class="section" id="dependencies">
+<h2><a name="dependencies">Dependencies</a></h2>
+<p>We have tried to minimize the dependencies of the SIB scripts in order to keep
+them simple and working in as many environments as possible.</p>
+<ul class="simple">
+<li>Python 2.4 or greater;</li>
+<li>If you use encryption of the archives, you need to have GnuPG installed (the
+gpg executable);</li>
+<li>If you send files to a remote host from the archive script, you need to have
+the ssh and scp clients installed.</li>
+</ul>
+<p>We invoke the client programs rather than use Python bindings for these last few
+options, in order to avoid yet more dependencies.</p>
+</div>
+<div class="section" id="portability">
+<h2><a name="portability">Portability</a></h2>
+<p>We have not tested SIB under Windows yet, but there is no reason why it should
+not work.  If you encounter problems or success using it on Windows, please let
+me know via email.</p>
+</div>
+</div>
+<div class="section" id="external-links">
+<h1><a name="external-links">External Links</a></h1>
+<ul class="simple">
+<li><a class="reference" href="http://furius.ca/sib">Official Homepage</a></li>
+<li><a class="reference" href="http://freshmeat.net/projects/sib">Freshmeat Application Index</a></li>
+<li><a class="reference" href="http://furius.ca">Author's Homepage</a></li>
+</ul>
+</div>
+<div class="section" id="copyright-license-and-disclaimer">
+<h1><a name="copyright-license-and-disclaimer">Copyright, License and Disclaimer</a></h1>
+<p>Copyright (C) 2005  Martin Blais.  All Rights Reserved.
+This code is distributed under the <a class="reference" href="COPYING">GNU General Public License</a>;</p>
+<p>We are <em>NOT</em> responsible for any data loss resulting from the use of these
+programs.  Please test your backups regularly, this is <em>YOUR</em> responsibility.
+If you do not test your backups, you do <em>NOT</em> have backups.  Test the archive
+and restore on the actual data that you will use it own as well.  If you don't
+understand the importance of this, we suggest you do not use the software.</p>
+</div>
+<div class="section" id="author">
+<h1><a name="author">Author</a></h1>
+<p>Martin Blais &lt;<a class="reference" href="mailto:blais&#64;furius.ca">blais&#64;furius.ca</a>&gt;</p>
+</div>
+</div>
+</body>
+</html>

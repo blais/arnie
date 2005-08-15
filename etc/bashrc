@@ -1,0 +1,15 @@
+#!/bin/sh
+#
+# $Id: bashrc,v 1.1 2004/02/09 18:51:12 blais Exp $
+# $Source: /home/blais/repos/cvsroot/xxdiff/etc/bashrc,v $
+#
+# Bash configuration for this project.
+#
+
+alias ts='$HOME/p/sib/test/bin/sib-tests'
+
+function t () {
+    pushd /tmp >/dev/null
+    $HOME/p/sib/test/bin/sib-tests $*
+    popd >/dev/null
+}

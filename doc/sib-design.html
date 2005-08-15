@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="iso-8859-1" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<meta name="generator" content="Docutils 0.3.10: http://docutils.sourceforge.net/" />
+<title>Simple Incremental Backups (Encrypted)</title>
+<meta name="author" content="Martin Blais &lt;blais&#64;furius.ca&gt;" />
+<meta name="date" content="2005-07-23" />
+<link rel="stylesheet" href="../style.css" type="text/css" />
+</head>
+<body>
+
+<div id="project-header">
+  <a href="/"><img src="/home/project-header.png" id="logo"></a>
+  <div id="project-home"><a href="..">Project Home</a></div>
+</div>
+
+<div class="document" id="simple-incremental-backups-encrypted">
+<h1 class="title">Simple Incremental Backups (Encrypted)</h1>
+<table class="docinfo" frame="void" rules="none">
+<col class="docinfo-name" />
+<col class="docinfo-content" />
+<tbody valign="top">
+<tr><th class="docinfo-name">Author:</th>
+<td>Martin Blais &lt;<a class="reference" href="mailto:blais&#64;furius.ca">blais&#64;furius.ca</a>&gt;</td></tr>
+<tr><th class="docinfo-name">Date:</th>
+<td>2005-07-23</td></tr>
+</tbody>
+</table>
+<div class="abstract topic">
+<p class="topic-title first">Abstract</p>
+<p>A solution for my offsite backups solution. 
+This is an internal design document and may not be up-to-date.
+These are just notes I took in the process of implementing that project.</p>
+</div>
+<div class="section" id="forces">
+<h1><a name="forces">Forces</a></h1>
+<p>We want:</p>
+<ul class="simple">
+<li>Networked backup: the size of backup data must be kept somewhat low;</li>
+<li>Incremental backups: we do not want to copy ALL the files everytime.  While we
+do not need to optimize the backup size, we want to keep is relatively
+low. &quot;As low as possible&quot; would mean doing file diffs.</li>
+<li>We want a simple solution.  I really mean <em>simple</em>.  You should be able to
+understand the algorithm and read the source code within 30 mins.</li>
+<li>It should be possible to store the backup files in encrypted form and on a
+remote platform.  This the backed up data is assumed to be inaccessible while
+we're carrying out the backup.</li>
+<li>We want to reuse existing and open source tools as must as possible.  tar,
+bz2, gzip, diff, gpg.</li>
+<li>Our code should be tested: there are people out the providing open source
+backup solutions which are buggy and not tested.  They don't understand that
+untested backups are no better than no backups at all.</li>
+</ul>
+</div>
+<div class="section" id="solution">
+<h1><a name="solution">Solution</a></h1>
+<p>Some definitions:</p>
+<blockquote>
+<dl class="docutils">
+<dt>Client</dt>
+<dd>The machine that needs to be backed up.</dd>
+<dt>Server</dt>
+<dd>The machine where backed up data archives are to be sent.</dd>
+</dl>
+</blockquote>
+<div class="section" id="the-algorithms">
+<h2><a name="the-algorithms">The algorithms</a></h2>
+<div class="section" id="backup">
+<h3><a name="backup">Backup</a></h3>
+<p>A file with the lists of files that were last backed up, including a CRC for
+each file (e.g. an MD5 sum) is kept and maintained on the client.  If the file
+is not available, a full backup should be run.</p>
+<ol class="arabic simple">
+<li>We load the last-backed-up file list;</li>
+<li>We compare against the current list of files to be backed up:<ul>
+<li>Files that have been added are marked to be backed up;</li>
+<li>Files that have changed (their MD5 sums or timestamps differ) are marked to
+be backed up.</li>
+</ul>
+</li>
+<li>We tar/zip (.tar.bz2) the list of files that have been added or changed into
+a backup archive file;</li>
+<li>We also save a full listing of the files that are present at the moment of
+backup, in a special file in the backup archive;</li>
+<li>The backup archive is optionally encrypted with a key, named with the current
+date/time, and sent to the server, to be put in a directory along with the
+other archives;</li>
+</ol>
+</div>
+<div class="section" id="restore">
+<h3><a name="restore">Restore</a></h3>
+<p>We assume that we have a list of backup archives, whose union contain at least
+one copy of the files in file list stored in a backup archive.</p>
+<ol class="arabic simple">
+<li>We open the latest archive file for the date at which we want to restore the
+backup and fetch the special file list for that date;</li>
+<li>We fetch the list of files stored within all the archives that precede the
+date for which we want to restore.  We do this lazily--we only open the files
+if we need to (see below).</li>
+<li>For each of the files in the list of files to restore: look for it from
+latest to earliest archive file.  Open the archives as needed (and keep their
+file lists cached).<ol class="loweralpha">
+<li>When a file is found, untar it into the restored output directory;</li>
+<li>If we run at the end of the list of archives, output and error and
+continue;</li>
+</ol>
+</li>
+</ol>
+<p>Another idea for restore would be to untar all the archives in order over each
+other and then to remove the files that are not supposed to be present.  This
+might actually be faster than the lookup I was planning to do.</p>
+</div>
+</div>
+<div class="section" id="about-dates">
+<h2><a name="about-dates">About Dates</a></h2>
+<p>There are two options for the restore algorithm to sort the files by date:</p>
+<ol class="arabic simple">
+<li>The filenames are assumed to contain the date/time embedded in the
+filename. There is no need to open the file to find out the date/time of the
+archive;</li>
+<li>The date/time is stored as the mtime of the history file contained within the
+archive.  We need to open <strong>all</strong> the archives in order to just find the
+date/times of the archives.  The advantage is that the archives can be named
+anything.</li>
+</ol>
+<p>Decision: We archive with information both in the filename and in the mtime of
+the history file contained therein.  The restore script by default will rely on
+the filename to determine its timestamp, but optionally will be able to look
+into the history file in case the filenames have been munged somehow.</p>
+</div>
+<div class="section" id="about-file-naming">
+<h2><a name="about-file-naming">About File Naming</a></h2>
+<p>Decision: full backups should <em>not</em> be named specially.  The restore script will
+be able to list which archives will be required to extract the list of files
+from the contained history file.</p>
+</div>
+</div>
+<div class="section" id="notes">
+<h1><a name="notes">Notes</a></h1>
+<ul class="simple">
+<li>We do not perform diffs.  Backups could be smaller (more optimal) with diffs,
+but complicate the algorithm.  This is in the interest of simplicity.</li>
+<li>We do not optimize file moves.  Tough tits.</li>
+</ul>
+</div>
+<div class="section" id="links">
+<h1><a name="links">Links</a></h1>
+<p>See this thread:
+<a class="reference" href="http://ask.slashdot.org/article.pl?sid=05/07/22/187217&amp;tid=198&amp;tid=95&amp;tid=4">http://ask.slashdot.org/article.pl?sid=05/07/22/187217&amp;tid=198&amp;tid=95&amp;tid=4</a></p>
+</div>
+<div class="section" id="implementation-notes">
+<h1><a name="implementation-notes">Implementation Notes</a></h1>
+<div class="section" id="treating-directories-just-like-files">
+<h2><a name="treating-directories-just-like-files">Treating Directories Just Like Files</a></h2>
+<ul class="simple">
+<li>Treat directories exactly just as files, so that empty backups are of size 0
+(it also much cleaner)<ul>
+<li>This means that we should store directories only if their attributes
+(permissions) changed.  What matters is:<ul>
+<li>For files: crc, permissions, user, mtime</li>
+<li>For directories: permissions, user, mtime</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="empty-directories">
+<h2><a name="empty-directories">Empty Directories</a></h2>
+<ul>
+<li><p class="first">Check if .tar.bz2 can contain empty directories.</p>
+<p>Answer: Yes!  And it also stores the permissions of directories ONLY if the
+directories are stored as entries of their own.  Otherwise, the permissions
+are not kept on the parent directories.</p>
+<p>So you <em>must</em> store entries for the directories as you go if you want to
+recover the entire permissions.</p>
+</li>
+<li><p class="first">Can empty directories be created with Python's tarfile module?  Can I store
+permissions too?  If so, then we should store the list of directories in the
+history file, to make sure that we can recreate them exactly the same, with
+the same permissions as well.</p>
+<p>Yes!  Extracting a directory file extracts the directory with all its
+permissions.</p>
+</li>
+</ul>
+</div>
+<div class="section" id="future-ideas-will-not-necessarily-get-done">
+<h2><a name="future-ideas-will-not-necessarily-get-done">Future Ideas (Will Not Necessarily Get Done)</a></h2>
+<div class="section" id="date-for-archives">
+<h3><a name="date-for-archives">Date for archives</a></h3>
+<blockquote>
+<ul class="simple">
+<li>We could use the time specified on the sibhistory file inside the archive
+instead of the string that is embedded within the archive filename.</li>
+</ul>
+</blockquote>
+</div>
+<div class="section" id="dates-between-machines">
+<h3><a name="dates-between-machines">Dates between machines</a></h3>
+<blockquote>
+<ul>
+<li><p class="first">Dates between machines could be different, so choosing a date that is stored
+on the source machine seems appropriate and important.</p>
+<p>Implement that date/time embedded within the filename (default) or the
+date/time stored as the mtime of the contained history file (slower, have to
+open all the archives to find out the date/times)</p>
+</li>
+</ul>
+</blockquote>
+</div>
+<div class="section" id="attributes-support">
+<h3><a name="attributes-support">Attributes Support</a></h3>
+<ul>
+<li><p class="first">Attributes not supported: st_uid st_gid st_atime st_mtime st_ctime</p>
+<p>Add support for some of those.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,172 @@
+#!/usr/bin/env python
+#******************************************************************************\
+#* Copyright (C) 2005 Martin Blais <blais@furius.ca>
+#*
+#* This program is free software; you can redistribute it and/or modify
+#* it under the terms of the GNU General Public License as published by
+#* the Free Software Foundation; either version 2 of the License, or
+#* (at your option) any later version.
+#*
+#* This program is distributed in the hope that it will be useful,
+#* but WITHOUT ANY WARRANTY; without even the implied warranty of
+#* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#* GNU General Public License for more details.
+#*
+#* You should have received a copy of the GNU General Public License
+#* along with this program; if not, write to the Free Software
+#* Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#*
+#*****************************************************************************/
+
+"""
+random-tree-gen [<options>] <output-dir>
+
+Generate a directory hierarchy randomly with random files in it.
+This is used to generate test file hierarchies.
+Generated files can be either text and/or binary.
+"""
+
+__version__ = "$Revision: 1.3 $"
+__author__ = "Martin Blais <blais@furius.ca>"
+
+
+import os, string
+from os.path import *
+import random
+import shutil
+
+
+letset = string.ascii_lowercase + string.digits
+
+def gen_random_name( nlenmin=5, nlenmax=20 ):
+    """
+    Generates a random filename within the given number of characters.
+    """
+    return ''.join(random.sample(letset, random.randint(nlenmin, nlenmax)))
+
+
+def gen_text_data( dlenmin=100, dlenmax=10000 ):
+    """
+    Generate random text data.
+    """
+    # Generate words
+    targetlen = random.randint(dlenmin, dlenmax)
+    totlen = 0
+
+    def gen_line():
+        "Generate a random line with words."
+        return ' '.join( gen_random_name(nlenmax=12)
+                         for x in xrange(random.randint(1, 10)) )
+
+    lines = []
+    while totlen < targetlen:
+        if random.random() < 0.1:
+            lines.append('')
+            totlen += 1
+        newline = gen_line()
+        lines.append(newline)
+        totlen += len(newline)
+
+    return os.linesep.join(lines)
+
+
+def main():
+    import optparse
+    parser = optparse.OptionParser(__doc__.strip(), version=__version__)
+
+    parser.add_option('-n', '--nb-files', action='store', type='int',
+                      default=30,
+                      help="Total number of files to copy.")
+
+    parser.add_option('-t', '--target', action='store', type='int',
+                      default=5,
+                      help="Target number of entries per created directory")
+
+    parser.add_option('-k', '--create-probability', action='store',
+                      type='float', default=0.3,
+                      help="""'k' factor, probability of creating new dirs.""")
+
+    parser.add_option('--delete', action='store_true',
+                      help="Delete destination directory before filling in.")
+
+    parser.add_option('-v', '--verbose', action='store_true',
+                      help="Verbose output.")
+
+    global opts
+    opts, args = parser.parse_args()
+
+    if len(args) != 1:
+        parser.error("Error: requires a single destination directory.")
+
+    dest = normpath(args[0])
+
+    #
+    # Validate destination directory.
+    #
+    if opts.delete and exists(dest):
+        if opts.verbose:
+            print 'Deleting output directory %s' % dest
+        for root, dirs, files in os.walk(dest, topdown=False):
+            for name in files:
+                os.remove(os.path.join(root, name))
+            for name in dirs:
+                os.rmdir(os.path.join(root, name))
+
+    if not exists(dest):
+        if opts.verbose:
+            print 'Creating output directory %s' % dest
+        os.makedirs(dest)
+
+    if not isdir(dest):
+        raise SystemExit("Error: destination must be a directory.")
+
+    # We implement an algorithm that tries to balance the number of files
+    # equally among the created directories.
+    dirs = [dest]
+    direntries = {dest: 0}
+    totpdf = opts.target
+
+    for n in xrange(opts.nb_files):
+        # Sample a directory according to the cumulative probability that is
+        # inverse to the target number of entries in each directory.
+        r = int(random.random() * totpdf)
+
+        totpdf2 = 0
+        for dn in dirs:
+            totpdf2 += opts.target - direntries[dn]
+        assert totpdf == totpdf2
+        
+        create = False
+        s = 0
+        for dn in dirs:
+            s += opts.target - direntries[dn]
+            if r < s:
+                chosendn = dn
+                break
+        else:
+            create = True
+
+        if create or random.random() < opts.create_probability:
+            newdn = join(chosendn, gen_random_name())
+            dirs.append(newdn)
+            direntries[newdn] = 0
+            totpdf += opts.target
+            if opts.verbose:
+                print 'Creating directory', newdn
+            os.mkdir(newdn)
+            chosendn = newdn
+
+        while 1:
+            outfn = join(chosendn, gen_random_name())
+            if not exists(outfn):
+                break
+
+        if opts.verbose:
+            print "Creating file '%s'" % outfn
+        open(outfn, 'w').write(gen_text_data())
+
+        direntries[chosendn] += 1
+        totpdf -= 1
+
+if __name__ == '__main__':
+    main()

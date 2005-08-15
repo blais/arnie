@@ -1,0 +1,35 @@
+#!/usr/bin/env python
+"""
+See if extracting a directory once it already exists will override the
+permissions.
+"""
+
+import os, tarfile, shutil
+from subprocess import call
+
+call('rm -rf /tmp/bli /tmp/BLI /tmp/bb.tar'.split())
+os.mkdir('/tmp/bli')
+os.mkdir('/tmp/bli/blu')
+os.chmod('/tmp/bli/blu', 0720)
+shutil.copyfile('/home/blais/p/conf/common/etc/emacsrc', '/tmp/bli/blu/em')
+
+tar = tarfile.open('/tmp/bb.tar', 'w')
+tar.add('/tmp/bli/blu', 'blu', recursive=False)
+tar.add('/tmp/bli/blu/em', 'blu/em')
+tar.close()
+
+call('find /tmp/bli -ls'.split())
+call('echo'.split())
+call('tar tvf /tmp/bb.tar'.split())
+call('echo'.split())
+
+## call('mkdir -p /tmp/BLI/blu'.split())
+## call('ls -lRd /tmp/BLI/blu'.split())
+
+tar = tarfile.open('/tmp/bb.tar', 'r')
+tar.extract('blu/em', '/tmp/BLI')
+call('ls -lRd /tmp/BLI/blu /tmp/BLI/blu/em'.split())
+tar.extract('blu/', '/tmp/BLI')
+tar.close()
+
+call('ls -lRd /tmp/BLI/blu /tmp/BLI/blu/em'.split())

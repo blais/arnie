@@ -1,0 +1,148 @@
+#!/usr/bin/env python
+# -*- coding: iso-8859-1 -*-
+#
+# $Source: /home/blais/repos/cvsroot/conf/common/bin/random-tree-edit,v $
+# $Id: random-tree-edit,v 1.2 2005/08/03 07:35:30 blais Exp $
+#
+
+"""
+random-tree-edit [<options>] <dir> [<dir> ...]
+
+Randomly add/remove/edit files from a file tree.
+This is used in test filesets to simulate user activity.
+"""
+
+__version__ = "$Revision: 1.2 $"
+__author__ = "Martin Blais <blais@furius.ca>"
+
+
+import os, random, math, string
+from os.path import *
+
+
+letset = string.ascii_lowercase + string.digits
+
+def gen_random_name( nlenmin=5, nlenmax=10 ):
+    """
+    Generates a random filename within the given number of characters.
+    """
+    return ''.join(random.sample(letset, random.randint(nlenmin, nlenmax)))
+
+
+def main():
+    """
+    Main program.
+    """
+    import optparse
+    parser = optparse.OptionParser(__doc__.strip(), version=__version__)
+
+    parser.add_option('-p', '--percentage', action='store', type='int',
+        default=15,
+        help="Percentage of files added/edited/removed (default 15).")
+
+    parser.add_option('-d', '--add-remove-dirs', action='store_true',
+                      help="Add or remove directories")
+
+    parser.add_option('-I', '--ignore', action='append',
+                      default=[],
+                      help="Specify files to ignore.")
+
+
+    opts, args = parser.parse_args()
+
+    if not args:
+        parser.error("You need to specify at least one root dir to edit")
+
+    # gather all dirs and files
+    adirs, afiles = [], []
+    for dn in args:
+        for root, dirs, files in os.walk(dn):
+            adirs.append(root)
+            afiles.extend( [join(root, x) for x in files] )
+
+    # remove files to ignore from the files of files
+    for ignfn in opts.ignore:
+        try:
+            afiles.remove(ignfn)
+        except ValueError:
+            pass
+        try:
+            adirs.remove(ignfn)
+        except ValueError:
+            pass
+
+    EDIT = 0
+    ADD = 1
+    REMOVE = 2
+    ADDDIR = 3
+    REMOVEDIR = 4
+
+    actprob = [EDIT] * 15 + [ADD] * 6 + [REMOVE] * 4
+    if opts.add_remove_dirs:
+        actprob.extend([ADDDIR] * 2 + [REMOVEDIR] * 2)
+
+    for n in xrange(int(math.ceil(
+        max(len(afiles), len(adirs)) * 0.01 * opts.percentage))):
+
+        # Choose an action
+        c = random.choice(actprob)
+
+        if c == EDIT: # edit
+            # grab some data from a random file
+            data = open(random.choice(afiles), 'r').read( random.randint(10, 500) )
+
+            fn = random.choice(afiles)
+            print 'edit', fn
+            # add the data at the end of an existing file
+            open(fn, 'a').write(data)
+
+        elif c == ADD: # add
+            # grab some data from a random file
+            data = open(random.choice(afiles), 'r').read( random.randint(10, 500) )
+
+            # choose a random directory
+            dn = random.choice(adirs)
+            # create a random filename
+            while True:
+                fn = join(dn, gen_random_name())
+                if not exists(fn):
+                    break
+            print 'add', fn
+            open(fn, 'w').write(data)
+            afiles.append(fn)
+
+        elif c == REMOVE: # remove
+            fn = random.choice(afiles)
+            print 'remove', fn
+            os.remove(fn)
+            afiles.remove(fn)
+
+        elif c == ADDDIR: # add directory
+            # choose a random directory
+            dn = random.choice(adirs)
+            # create a random new directory name
+            while True:
+                dn = join(dn, gen_random_name())
+                if not exists(dn):
+                    break
+            print 'add directory', dn
+            os.mkdir(dn)
+            adirs.append(fn)
+
+        elif c == REMOVEDIR: # remove directory
+            # choose a random directory
+            dn = random.choice(adirs)
+
+            for root, dirs, files in os.walk(dn, topdown=False):
+                for name in files:
+                    os.remove(join(root, name))
+                for name in dirs:
+                    os.rmdir(join(root, name))
+            os.rmdir(dn)
+
+            print 'remove directory', dn
+            adirs.remove(dn)
+
+
+if __name__ == '__main__':
+    main()
