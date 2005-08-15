@@ -1,5 +1,5 @@
 ===================================
-  sib: Simple Incremental Backups
+  arnie: Simple Incremental Backups
 ===================================
 
 Description
@@ -39,18 +39,18 @@ Basic Functioning and Features
 ------------------------------
 
 The system consists in two self-contained Python scripts: the archiver
-(``sib-archive``) and the restorer (``sib-restore``).
+(``arnie-archive``) and the restorer (``arnie-restore``).
 
 Essentially, the SIB archiver creates a tar archive with all the files that have
 changed since the last backup.  The history of what had been previously backed
 up is kept in a simple text file in the root of the archived directory
-(``.sibhistory``), and the full list of files available at the moment of backup
+(``.arniehistory``), and the full list of files available at the moment of backup
 is also included in the tar archive itself.  Optionally, the history file can be
 stored in an alternate location (see options).
 
 To archive, you typically run a command like this::
 
-   sib-archive /path/to/important-dir remotehost:/path/to/backups
+   arnie-archive /path/to/important-dir remotehost:/path/to/backups
 
 The name of the archive file generated is output on stdout.  The date of the
 backup archive is contained in the filename, so do not rename the file (there is
@@ -63,7 +63,7 @@ its list of necessary files to restore, and search backwards in time within all
 the available archive files to find them.  To restore, you login to the remote
 host (or fetch the archives locally) and run::
 
-   sib-restore /path/to/backups /path/to/restored-directory [<dir/file> ...]
+   arnie-restore /path/to/backups /path/to/restored-directory [<dir/file> ...]
 
 The original archived directory will be restored to
 ``/path/to/restored-directory``.  After re-creating the files, the restore
@@ -124,25 +124,25 @@ There is no special manual, the manual consists in this README file and the
 ``--help`` switch will provide ample details about invocation. Run the scripts
 like this to get full details::
 
-   sib-archive --help
+   arnie-archive --help
 
 Other files:
 
 - `CHANGES <CHANGES>`_ *(news, recent changes, history)*;
 - `TODO <TODO>`_ *(future features, wishlist)*;
-- `Design Notes (Internal Notes) <doc/sib-design.html>`_;
+- `Design Notes (Internal Notes) <doc/arnie-design.html>`_;
 
 
 Download
 ========
 
-The latest release is always available in the `download area </downloads/sib>`_.
+The latest release is always available in the `download area </downloads/arnie>`_.
 
 
 Installation and Packaging
 ==========================
 
-Simply copy the ``sib/bin/sib-archive`` and ``sib/bin/sib-restore`` scripts to
+Simply copy the ``arnie/bin/arnie-archive`` and ``arnie/bin/arnie-restore`` scripts to
 ``/usr/bin``.
 
 
@@ -173,7 +173,7 @@ Dependencies
 ------------
 
 We have tried to minimize the dependencies of the SIB scripts in order to keep
-them simple and working in as many environments as possible.
+them simple and working in as many environments as posarniele.
 
 - Python 2.4 or greater;
 
@@ -198,8 +198,8 @@ me know via email.
 External Links
 ==============
 
-- `Official Homepage <http://furius.ca/sib>`_
-- `Freshmeat Application Index <http://freshmeat.net/projects/sib>`_
+- `Official Homepage <http://furius.ca/arnie>`_
+- `Freshmeat Application Index <http://freshmeat.net/projects/arnie>`_
 - `Author's Homepage <http://furius.ca>`_
 
 

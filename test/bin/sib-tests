@@ -17,15 +17,15 @@ from pprint import pprint, pformat
 
 # get root of projects
 projdir = __file__
-while basename(projdir) != 'sib':
+while basename(projdir) != 'arnie':
     projdir = dirname(projdir)
 
 # specify test root temporary directory
-testroot = '/tmp/sib'
+testroot = '/tmp/arnie'
 
 encrypt_key = 'D1775F1D'
 
-history_fn = '.sibhistory'
+history_fn = '.arniehistory'
 
 #-------------------------------------------------------------------------------
 #
@@ -153,7 +153,7 @@ def source_edit( root ):
     - root: the root of the files to randomly edit.
     """
     print_header('Editing %s' % root)
-    runprint(['random-tree-edit', '-I', join(root, '.sibhistory'), root])
+    runprint(['random-tree-edit', '-I', join(root, '.arniehistory'), root])
 
 
 #-------------------------------------------------------------------------------
@@ -188,7 +188,7 @@ def archive( root, backupdir, options=[], expstatus=0 ):
     Run the archiver on the given root directory.
     """
     print_header('Backup %s' % root)
-    cmd = [join(projdir, 'bin', 'sib-archive')] + options + [root, backupdir]
+    cmd = [join(projdir, 'bin', 'arnie-archive')] + options + [root, backupdir]
     sout, serr, status = runprint(cmd)
     if status == 0:
         archfn = sout.splitlines()[-1].strip()
@@ -204,7 +204,7 @@ def restore( backupdir, restoredir, reslist=[], options=[] ):
     Run the archiver on the given root directory.
     """
     print_header('Restore %s to %s' % (backupdir, restoredir))
-    cmd = [join(projdir, 'bin', 'sib-restore')] + options + \
+    cmd = [join(projdir, 'bin', 'arnie-restore')] + options + \
           [backupdir, restoredir] + reslist
     sout, serr, errcode = runprint(cmd)
     return errcode
@@ -313,7 +313,7 @@ class BaseTest(unittest.TestCase):
 
         if expected_retcode == 0:
             # compare source to restored
-            errors = compare_dirs(self.src, self.rest, ['.sibhistory'])
+            errors = compare_dirs(self.src, self.rest, ['.arniehistory'])
             if errors:
                 print errors
             assert not errors
@@ -702,7 +702,7 @@ class TestDated(BaseTest):
             assert retcode == 0
 
             # Compare source snapshot to restored.
-            errors = compare_dirs(srcdir, restdir, ['.sibhistory'])
+            errors = compare_dirs(srcdir, restdir, ['.arniehistory'])
             if errors:
                 print errors
             assert not errors
@@ -721,7 +721,7 @@ class TestDated(BaseTest):
             assert retcode == 0
 
             # Compare source snapshot to restored.
-            errors = compare_dirs(srcdir, restdir, ['.sibhistory'])
+            errors = compare_dirs(srcdir, restdir, ['.arniehistory'])
             if errors:
                 print errors
             assert not errors
@@ -752,7 +752,7 @@ class TestExcludes(BaseTest):
         assert retcode == 0
 
         # Check that 4 files with bli are missing.
-        errors = compare_dirs(self.src, self.rest + '.f', ['.sibhistory'])
+        errors = compare_dirs(self.src, self.rest + '.f', ['.arniehistory'])
         assert errors
         lines = errors.strip().splitlines()
         for l in lines:
@@ -766,7 +766,7 @@ class TestExcludes(BaseTest):
         assert retcode == 0
 
         # Check that some directory is missing.
-        errors = compare_dirs(self.src, self.rest + '.d', ['.sibhistory'])
+        errors = compare_dirs(self.src, self.rest + '.d', ['.arniehistory'])
         assert errors
         print errors
 

@@ -18,19 +18,19 @@
 #
 
 """
-sib-is-full [<options>] <arch-file>
+arnie-is-full [<options>] <arch-file>
 
 Check if the backup includes all the files that are mentioned in its contained
 history file.  The script takes a single archive file and exits with 0 if the
 archive is a full backup, with 1 if incremental only.
 
-See design documentation at http://furius.ca/sib for more details.
+See design documentation at http://furius.ca/arnie for more details.
 """
 
 import sys, os, tarfile
 from os.path import *
 
-history_fn = '.sibhistory'
+history_fn = '.arniehistory'
 
 
 def read_history( histfile ):
