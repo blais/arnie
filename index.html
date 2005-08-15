@@ -4,7 +4,7 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
 <meta name="generator" content="Docutils 0.3.10: http://docutils.sourceforge.net/" />
-<title>sib: Simple Incremental Backups</title>
+<title>arnie: Simple Incremental Backups</title>
 <link rel="stylesheet" href="style.css" type="text/css" />
 </head>
 <body>
@@ -14,8 +14,8 @@
   
 </div>
 
-<div class="document" id="sib-simple-incremental-backups">
-<h1 class="title">sib: Simple Incremental Backups</h1>
+<div class="document" id="arnie-simple-incremental-backups">
+<h1 class="title">arnie: Simple Incremental Backups</h1>
 <div class="section" id="description">
 <h1><a name="description">Description</a></h1>
 <p>In a single sentence, SIB is: a tremendously <em>simple</em> system for performing
@@ -44,16 +44,16 @@ other people.  This is why I provide this code as open source.</p>
 <div class="section" id="basic-functioning-and-features">
 <h2><a name="basic-functioning-and-features">Basic Functioning and Features</a></h2>
 <p>The system consists in two self-contained Python scripts: the archiver
-(<tt class="docutils literal"><span class="pre">sib-archive</span></tt>) and the restorer (<tt class="docutils literal"><span class="pre">sib-restore</span></tt>).</p>
+(<tt class="docutils literal"><span class="pre">arnie-archive</span></tt>) and the restorer (<tt class="docutils literal"><span class="pre">arnie-restore</span></tt>).</p>
 <p>Essentially, the SIB archiver creates a tar archive with all the files that have
 changed since the last backup.  The history of what had been previously backed
 up is kept in a simple text file in the root of the archived directory
-(<tt class="docutils literal"><span class="pre">.sibhistory</span></tt>), and the full list of files available at the moment of backup
+(<tt class="docutils literal"><span class="pre">.arniehistory</span></tt>), and the full list of files available at the moment of backup
 is also included in the tar archive itself.  Optionally, the history file can be
 stored in an alternate location (see options).</p>
 <p>To archive, you typically run a command like this:</p>
 <pre class="literal-block">
-sib-archive /path/to/important-dir remotehost:/path/to/backups
+arnie-archive /path/to/important-dir remotehost:/path/to/backups
 </pre>
 <p>The name of the archive file generated is output on stdout.  The date of the
 backup archive is contained in the filename, so do not rename the file (there is
@@ -65,7 +65,7 @@ its list of necessary files to restore, and search backwards in time within all
 the available archive files to find them.  To restore, you login to the remote
 host (or fetch the archives locally) and run:</p>
 <pre class="literal-block">
-sib-restore /path/to/backups /path/to/restored-directory [&lt;dir/file&gt; ...]
+arnie-restore /path/to/backups /path/to/restored-directory [&lt;dir/file&gt; ...]
 </pre>
 <p>The original archived directory will be restored to
 <tt class="docutils literal"><span class="pre">/path/to/restored-directory</span></tt>.  After re-creating the files, the restore
@@ -122,22 +122,22 @@ to intermediate size files (such as a CVS source code repository).</p>
 <tt class="docutils literal"><span class="pre">--help</span></tt> switch will provide ample details about invocation. Run the scripts
 like this to get full details:</p>
 <pre class="literal-block">
-sib-archive --help
+arnie-archive --help
 </pre>
 <p>Other files:</p>
 <ul class="simple">
 <li><a class="reference" href="CHANGES">CHANGES</a> <em>(news, recent changes, history)</em>;</li>
 <li><a class="reference" href="TODO">TODO</a> <em>(future features, wishlist)</em>;</li>
-<li><a class="reference" href="doc/sib-design.html">Design Notes (Internal Notes)</a>;</li>
+<li><a class="reference" href="doc/arnie-design.html">Design Notes (Internal Notes)</a>;</li>
 </ul>
 </div>
 <div class="section" id="download">
 <h1><a name="download">Download</a></h1>
-<p>The latest release is always available in the <a class="reference" href="/downloads/sib">download area</a>.</p>
+<p>The latest release is always available in the <a class="reference" href="/downloads/arnie">download area</a>.</p>
 </div>
 <div class="section" id="installation-and-packaging">
 <h1><a name="installation-and-packaging">Installation and Packaging</a></h1>
-<p>Simply copy the <tt class="docutils literal"><span class="pre">sib/bin/sib-archive</span></tt> and <tt class="docutils literal"><span class="pre">sib/bin/sib-restore</span></tt> scripts to
+<p>Simply copy the <tt class="docutils literal"><span class="pre">arnie/bin/arnie-archive</span></tt> and <tt class="docutils literal"><span class="pre">arnie/bin/arnie-restore</span></tt> scripts to
 <tt class="docutils literal"><span class="pre">/usr/bin</span></tt>.</p>
 </div>
 <div class="section" id="testing">
@@ -160,7 +160,7 @@ others.</p>
 <div class="section" id="dependencies">
 <h2><a name="dependencies">Dependencies</a></h2>
 <p>We have tried to minimize the dependencies of the SIB scripts in order to keep
-them simple and working in as many environments as possible.</p>
+them simple and working in as many environments as posarniele.</p>
 <ul class="simple">
 <li>Python 2.4 or greater;</li>
 <li>If you use encryption of the archives, you need to have GnuPG installed (the
@@ -181,8 +181,8 @@ me know via email.</p>
 <div class="section" id="external-links">
 <h1><a name="external-links">External Links</a></h1>
 <ul class="simple">
-<li><a class="reference" href="http://furius.ca/sib">Official Homepage</a></li>
-<li><a class="reference" href="http://freshmeat.net/projects/sib">Freshmeat Application Index</a></li>
+<li><a class="reference" href="http://furius.ca/arnie">Official Homepage</a></li>
+<li><a class="reference" href="http://freshmeat.net/projects/arnie">Freshmeat Application Index</a></li>
 <li><a class="reference" href="http://furius.ca">Author's Homepage</a></li>
 </ul>
 </div>
