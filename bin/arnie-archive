@@ -402,9 +402,10 @@ def main():
                 os.remove(outfn)
                 outfn = encfn
             else:
-                raise SystemExit(
-                    "Error: encrypting the file (%s)\n" % p.returncode +
-                    sout + os.linesep + serr)
+                s = "Error: encrypting the file (%s)\n" % p.returncode
+                s += sout + '\n' + serr + '\n'
+                s += '(Backup aborted.  File deleted/not sent.)'
+                raise SystemExit(s)
                 
         # Send the backup file to its remote host if requested.
         if remote_host:
