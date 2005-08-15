@@ -419,6 +419,7 @@ def main():
     finally:
         if remote_host:
             os.remove(outfn)
+            outfn = '%s:%s' % (remote_host, remote_dir)
 
     # Overwrite the history file.
     try:
