@@ -404,7 +404,7 @@ def main():
             else:
                 s = "Error: encrypting the file (%s)\n" % p.returncode
                 s += sout + '\n' + serr + '\n'
-                s += '(Backup aborted.  File deleted/not sent.)'
+                s += '(Backup aborted due to errors.  File deleted/not sent.)'
                 raise SystemExit(s)
                 
         # Send the backup file to its remote host if requested.
