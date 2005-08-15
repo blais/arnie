@@ -18,7 +18,7 @@
 #
 
 """
-sib-restore [<options>] <arch-dir> <restoredir> [<file-or-dir> ...]
+arnie-restore [<options>] <arch-dir> <restoredir> [<file-or-dir> ...]
 
 Simple Increment Backups Restorer program.  This program restores a backup
 created by the corresponding archiver program.  The user specifies a directory
@@ -29,7 +29,7 @@ Optionally, you can specify a list of directories or files to restore (default
 is to restore all), which should be a list of filenames relative to the backup
 root.
 
-See documentation at http://furius.ca/sib for more details.
+See documentation at http://furius.ca/arnie for more details.
 """
 
 import sys
@@ -40,7 +40,7 @@ import os, re, md5, datetime, StringIO, stat
 import tarfile
 from os.path import *
 
-history_fn = '.sibhistory'
+history_fn = '.arniehistory'
 
 
 #-------------------------------------------------------------------------------

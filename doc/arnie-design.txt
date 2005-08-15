@@ -196,7 +196,7 @@ Future Ideas (Will Not Necessarily Get Done)
 Date for archives
 ~~~~~~~~~~~~~~~~~
 
-  - We could use the time specified on the sibhistory file inside the archive
+  - We could use the time specified on the arniehistory file inside the archive
     instead of the string that is embedded within the archive filename.
 
 Dates between machines

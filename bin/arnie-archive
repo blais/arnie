@@ -18,7 +18,7 @@
 #
 
 """
-sib-archive [<options>] <root> [<arch-dir>]
+arnie-archive [<options>] <root> [<arch-dir>]
 
 Simple Increment Backups Archiver program.  This program creates a simple
 archive of files that have changed since it was last run.
@@ -33,7 +33,7 @@ If <arch-dir> is in the format [<user>@]<hostname>:<filename>, we automatically
 send the backup file to the remote host via scp.  No temporary file is kept
 locally.
 
-See documentation at http://furius.ca/sib for more details.
+See documentation at http://furius.ca/arnie for more details.
 """
 
 import sys
@@ -46,7 +46,7 @@ import tarfile
 from subprocess import Popen, PIPE
 from os.path import *
 
-history_fn = '.sibhistory'
+history_fn = '.arniehistory'
 
 #-------------------------------------------------------------------------------
 #
