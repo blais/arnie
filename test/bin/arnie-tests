@@ -455,6 +455,15 @@ class TestCompression(BaseTest):
 
 #-------------------------------------------------------------------------------
 #
+class TestNoRoot(BaseTest):
+    """
+    Test archiving a directory that does not exist.
+    """
+    host = None
+
+    def test( self ):
+        archive('/bsbsbs', self.back, expstatus=1)
+        
 class TestNoLocalArchDir(BaseTest):
     """
     Test archive to a local directory which does not exist.
@@ -885,7 +894,7 @@ for symbol, obj in globals().copy().iteritems():
 
 simple = [ TestSimple ]
 
-current = [ TestPartial ]
+current = [ TestNoRoot ]
 
 #-------------------------------------------------------------------------------
 #

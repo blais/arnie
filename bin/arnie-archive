@@ -320,7 +320,7 @@ def main():
     remote_host, remote_dir = None, None
     if len(args) == 2:
         archdir = args[1]
-        remote_re = re.compile('((?:\w+@)?\w+):(.+)')
+        remote_re = re.compile('((?:[\w.]+@)?[\w.]+):(.+)')
         mo = remote_re.match(archdir)
         if mo:
             remote_host, remote_dir = mo.group(1, 2)
@@ -334,12 +334,17 @@ def main():
     except re.error, e:
         raise SystemExit("Error: could not compile regexp %s" % e)
         
+    # Check root directory.
+    if not exists(root):
+        raise SystemExit("Error: directory to backup does not exist %s" % root)
+        
     # Check archive directory.
-    if not exists(archdir):
-        raise SystemExit("Error: The archive directory must exist.")
-    if remote_host is not None and \
-           not exists_remote_dir(remote_host, remote_dir):
-        raise SystemExit("Error: The remote archive directory must exist.")
+    if remote_host is None:
+        if not exists(archdir):
+            raise SystemExit("Error: The local archive directory must exist.")
+    else:
+        if not exists_remote_dir(remote_host, remote_dir):
+            raise SystemExit("Error: The remote archive directory must exist.")
         
     if opts.history is None:
         opts.history = join(root, history_fn)
