@@ -206,16 +206,13 @@ def create_history_file( alldirs, allfiles ):
 
 #-------------------------------------------------------------------------------
 #
-def backup_files( root, incrdirs, incrfiles, hist_contents, outfnbase ):
+def backup_files( root, incrdirs, incrfiles, hist_contents, outfn ):
     """
     Backup the given list of files to the output archive.
 
     :Returns: the name of the final output filename.
     """
     # create the archive file
-    outfn = '%s.tar' % outfnbase
-    if opts.compression:
-        outfn = '%s.%s' % (outfn, opts.compression)
     tar = tarfile.open(outfn, 'w:%s' % opts.compression)
 
     # add the history filelist first
@@ -235,8 +232,6 @@ def backup_files( root, incrdirs, incrfiles, hist_contents, outfnbase ):
         tar.add(join(root, relfn), relfn)
 
     tar.close()
-
-    return outfn
 
 
 #-------------------------------------------------------------------------------
@@ -275,6 +270,9 @@ def main():
     """
     import optparse
     parser = optparse.OptionParser(__doc__.strip())
+
+    parser.add_option('-v', '--verbose', action='store_true',
+                      help="Output progress information verbosely.")
 
     parser.add_option('-H', '--history', action='store',
                       help="History file location (default lies in rootdir)")
@@ -347,7 +345,7 @@ def main():
             raise SystemExit("Error: The remote archive directory must exist.")
         
     if opts.history is None:
-        opts.history = join(root, history_fn)
+        opts.history = abspath(join(root, history_fn))
 
     # Read the history file.
     if opts.full:
@@ -365,6 +363,8 @@ def main():
             histfiles = {} # no history file, create empty
 
     # Find the entire list of files, and the list of files to backup.
+    if opts.verbose:
+        print '=== Finding list of files to backup.'
     (alldirs, incrdirs,
      allfiles, incrfiles) = find_files(root, histfiles, excludes)
 
@@ -383,17 +383,29 @@ def main():
                             now.strftime('%H%M%S'),
                             now.microsecond / 10000)
 
-    try:
-        # Compute contents of the new history file.
-        hist_contents = create_history_file(alldirs, allfiles)
+    # Compute contents of the new history file.
+    if opts.verbose:
+        print '=== Creating history file.'
+    hist_contents = create_history_file(alldirs, allfiles)
 
+    # Determine name of the backup file.
+    pfxoutfn = join(archdir, '%s.%s' % (opts.prefix, tstamp))
+    outfn = '%s.tar' % pfxoutfn
+    if opts.compression:
+        outfn = '%s.%s' % (outfn, opts.compression)
+    encfn = None # For the temporary encrypted file.
+
+    try:
         # Do backups...
-        pfxoutfn = join(archdir, '%s.%s' % (opts.prefix, tstamp))
-        outfn = backup_files(root, incrdirs, incrfiles, hist_contents, pfxoutfn)
+        if opts.verbose:
+            print "=== Filling up archive '%s'." % outfn
+        backup_files(root, incrdirs, incrfiles, hist_contents, outfn)
 
         # Encrypt the file with the given key if requested.
-	encfn = None
         if opts.encrypt:
+            if opts.verbose:
+                print '=== Encrypting archive.'
+
             encfn = '%s.gpg' % outfn
             p = Popen(['gpg', '--encrypt', '--recipient=%s' % opts.encrypt,
                        '--output=%s' % encfn, outfn],
@@ -410,6 +422,10 @@ def main():
                 
         # Send the backup file to its remote host if requested.
         if remote_host:
+            if opts.verbose:
+                print "=== Sending archive to remote host '%s' in dir '%s'" % \
+                      (remote_host, remote_dir)
+
             p = Popen(['scp', outfn, '%s:%s' % (remote_host, remote_dir)],
                       stdout=PIPE, stderr=PIPE)
             sout, serr = p.communicate()
@@ -418,14 +434,25 @@ def main():
                     "Error: copying the file to remote host (%s)" %
                     sout + os.linesep + serr)
             
-    finally:
-        if remote_host:
+            # Clean up temporary files.
+            if opts.verbose:
+                print '=== Cleaning up.'
+
             os.remove(outfn)
-	    if encfn and exists(encfn):
-	        os.remove(encfn) # This can occur if encryption fails.
-            outfn = '%s:%s' % (remote_host, remote_dir)
+
+            # Output the filename of the remote file.
+            outfn = join('%s:%s' % (remote_host, remote_dir), basename(outfn))
+
+    except Exception:
+        # Cleanup temporary files if there is an error.
+        for fn in [outfn, encfn]:
+            if fn and exists(fn):
+                os.remove(fn)
+        raise
 
     # Overwrite the history file.
+    if opts.verbose:
+        print "=== Writing history file '%s'" % opts.history
     try:
         f = open(opts.history, 'w')
         f.write(hist_contents)
@@ -434,6 +461,9 @@ def main():
         raise SystemExit("Error: Could not (over)write history file.'")
 
     # The last line will contain the name of the output archive file.
+    if opts.verbose:
+        print "=== Done."
+
     print outfn
     return 0
 
@@ -442,5 +472,9 @@ def _test():
     import doctest; doctest.testmod()
 
 if __name__ == '__main__':
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        print >> sys.stderr, 'Interrupted.'
+        sys.exit(1)
 
