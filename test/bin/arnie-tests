@@ -59,10 +59,15 @@ def rmrf( fnodn ):
             for fn in files:
                 os.remove(join(root, fn))
             for dn in dirs:
-                os.rmdir(join(root, dn))
+                adn = join(root, dn)
+                if islink(adn):
+                    os.remove(adn)
+                else:
+                    os.rmdir(adn)
         os.rmdir(root)
     else:
         os.remove(fnodn)
+
 
 #-------------------------------------------------------------------------------
 #
@@ -73,6 +78,7 @@ def random_dir( aroot ):
     """
     while 1:
         for root, dirs, files in os.walk(aroot):
+            dirs = filter(lambda x: not islink(x), dirs)
             if dirs and random.random() < 0.1:
                 return join(root, random.choice(dirs))
 
@@ -230,10 +236,21 @@ def compare_dirs( dir1, dir2, ignore_files=[] ):
                 if ign in l:
                     l.remove(ign)
 
-##         for cfn in self.common:
-##             if cfn.endswith('lnk'):
-##                 print 'Common', cfn
-## ## FIXME remove
+        for cfn in self.common + self.common_funny:
+            lfn = join(self.left, cfn)
+            rfn = join(self.left, cfn)
+
+            # Check if both sides are either files or links.
+            if islink(lfn) ^ islink(rfn):
+                print >> err, 'Differ in type (link, file)', lfn, ':', rfn
+                e = 1
+
+            # If links, compare targets.
+            if islink(lfn):
+                if os.readlink(lfn) != os.readlink(rfn):
+                    print >> err, 'Link targets differ: %s (%s) vs. %s (%s)' % \
+                          (lfn, os.readlink(lfn), rfn, os.readlink(rfn))
+                    e = 1
 
         e = 0
         if self.left_only:
@@ -248,14 +265,11 @@ def compare_dirs( dir1, dir2, ignore_files=[] ):
         if self.funny_files:
             print >> err, 'Trouble with common files :', self.funny_files
             e = 1
-        if self.common_funny:
-            print >> err, 'Common funny cases :', self.common_funny
-            e = 1
 
         # Check permissions
         for dn in self.common:
             dn1, dn2 = [join(x, dn) for x in [self.left, self.right]]
-            stat1, stat2 = [os.stat(x) for x in [dn1, dn2]]
+            stat1, stat2 = [os.lstat(x) for x in [dn1, dn2]]
             if stat1.st_mode != stat2.st_mode:
                 print 'Files:', dn1, dn2
                 print '   Different permissions:', stat1.st_mode, stat2.st_mode
@@ -306,14 +320,16 @@ class BaseTest(unittest.TestCase):
     def test( self ):
         raise NotImplementedError
 
-    def restore_and_compare( self, expected_retcode=0 ):
+    def restore_and_compare( self, expected_retcode=0, restfn=None ):
         # restore the latest
-        retcode = restore(self.back, self.rest)
+        if restfn is None:
+            restfn = self.rest
+        retcode = restore(self.back, restfn)
         assert retcode == expected_retcode
 
         if expected_retcode == 0:
             # compare source to restored
-            errors = compare_dirs(self.src, self.rest, ['.arniehistory'])
+            errors = compare_dirs(self.src, restfn, ['.arniehistory'])
             if errors:
                 print errors
             assert not errors
@@ -343,6 +359,16 @@ class TestSimple(BaseTest):
         archive(self.src, self.back, self.archopts)
 
         self.restore_and_compare()
+
+#-------------------------------------------------------------------------------
+#
+class TestVerbose(TestSimple):
+    """
+    Simple normal succesfull backup-restore test.
+    """
+    archopts = ['--verbose']
+
+
 
 #-------------------------------------------------------------------------------
 #
@@ -463,7 +489,7 @@ class TestNoRoot(BaseTest):
 
     def test( self ):
         archive('/bsbsbs', self.back, expstatus=1)
-        
+
 class TestNoLocalArchDir(BaseTest):
     """
     Test archive to a local directory which does not exist.
@@ -782,23 +808,141 @@ class TestExcludes(BaseTest):
 
 #-------------------------------------------------------------------------------
 #
-class TestSymLinks(BaseTest):
+class TestSymLink(BaseTest):
     """
     Test with symbolic links.
     """
     def test( self ):
         # Create some symbolic link.
         fn = random_file(self.src)
+
+        rest = '%s.1' % self.rest
         lfn = fn + '.lnk'
         os.symlink(basename(fn), lfn)
         print 'Created symlink', lfn, '->', basename(fn)
 
         archive(self.src, self.back)
-        self.restore_and_compare()
+        self.restore_and_compare(restfn=rest)
 
-        restored_link = join(self.rest, lfn[len(self.src)+1:])
+        restored_link = join(rest, lfn[len(self.src)+1:])
         print 'Checking', restored_link
         assert islink(restored_link)
+        assert os.readlink(restored_link) == basename(fn)
+
+        # Change link and test again.
+        rest = '%s.2' % self.rest
+
+        # Remove link
+        os.remove(lfn)
+        # Copy file to another name
+        copyfn = '%s.copy' % fn
+        os.symlink(basename(copyfn), lfn)
+        print 'Created symlink', lfn, '->', basename(fn)
+        shutil.copyfile(fn, copyfn)
+
+        archive(self.src, self.back)
+        self.restore_and_compare(restfn=rest)
+
+        restored_link = join(rest, lfn[len(self.src)+1:])
+        print 'Checking', restored_link
+        assert islink(restored_link)
+        assert os.readlink(restored_link) == basename(copyfn)
+
+
+        # Change link to something that does not exist.
+        rest = '%s.3' % self.rest
+        # Remove link
+        os.remove(lfn)
+        # Copy file to another name
+        nonex = basename(new_filename(dirname(fn)))
+        os.symlink(nonex, lfn)
+        print 'Created symlink', lfn, '->', nonex
+
+        archive(self.src, self.back)
+        self.restore_and_compare(restfn=rest)
+
+        restored_link = join(rest, lfn[len(self.src)+1:])
+        print 'Checking', restored_link
+        assert islink(restored_link)
+        assert os.readlink(restored_link) == nonex
+
+
+        # Change link to itself.
+        rest = '%s.4' % self.rest
+        # Remove link
+        os.remove(lfn)
+        # Copy file to another name
+        os.symlink(basename(lfn), lfn)
+        print 'Created symlink', lfn, '->', basename(lfn)
+
+        archive(self.src, self.back)
+        self.restore_and_compare(restfn=rest)
+
+        restored_link = join(rest, lfn[len(self.src)+1:])
+        print 'Checking', restored_link
+        assert islink(restored_link)
+        assert os.readlink(restored_link) == basename(lfn)
+
+#-------------------------------------------------------------------------------
+#
+class TestSymLinkDir(BaseTest):
+    """
+    Test with symbolic links to directories.
+    """
+    def test( self ):
+        # Create some symbolic link.
+        lfn = new_filename(self.src)
+        dn = random_dir(self.src)[len(self.src)+1:]
+
+        os.symlink(dn, lfn)
+        print 'Created symlink', lfn, '->', dn
+
+        archive(self.src, self.back)
+        rest = '%s.1' % self.rest
+        self.restore_and_compare(restfn=rest)
+
+        restored_link = join(rest, lfn[len(self.src)+1:])
+        print 'Checking', restored_link
+        assert islink(restored_link)
+        assert os.readlink(restored_link) == dn
+
+
+        # Create some symbolic link to another dir.
+        dn, olddn = dn, dn
+        while dn == olddn and dn != lfn:
+            dn = random_dir(self.src)[len(self.src)+1:]
+
+        os.remove(lfn)
+        os.symlink(dn, lfn)
+        print 'Created symlink', lfn, '->', dn
+
+        archive(self.src, self.back)
+        rest = '%s.2' % self.rest
+        self.restore_and_compare(restfn=rest)
+
+        restored_link = join(rest, lfn[len(self.src)+1:])
+        print 'Checking', restored_link
+        assert islink(restored_link)
+        assert os.readlink(restored_link) == dn
+
+
+        # Change link to something that does not exist.
+        # Remove link
+        os.remove(lfn)
+        # Copy file to another name
+        nonex = basename(new_filename(dirname(dn)))
+        os.symlink(nonex, lfn)
+        print 'Created symlink', lfn, '->', nonex
+
+        archive(self.src, self.back)
+        rest = '%s.3' % self.rest
+        self.restore_and_compare(restfn=rest)
+
+        restored_link = join(rest, lfn[len(self.src)+1:])
+        print 'Checking', restored_link
+        assert islink(restored_link)
+        assert os.readlink(restored_link) == nonex
+
 
 #-------------------------------------------------------------------------------
 #
@@ -812,8 +956,8 @@ class TestRootPerms(BaseTest):
 
         archive(self.src, self.back)
         self.restore_and_compare()
-        
-        
+
+
 #-------------------------------------------------------------------------------
 #
 class TestPartial(BaseTest):
@@ -836,7 +980,7 @@ class TestPartial(BaseTest):
 
         for i, fn in enumerate([random_dir(self.src)[len(self.src)+1:],
                                 random_file(self.src)[len(self.src)+1:]]):
-            
+
             print 'Partial restore for:', fn
             print
             rest = self.rest + '.%d' % i
@@ -894,7 +1038,7 @@ for symbol, obj in globals().copy().iteritems():
 
 simple = [ TestSimple ]
 
-current = [ TestNoRoot ]
+current = [ TestVerbose ]
 
 #-------------------------------------------------------------------------------
 #

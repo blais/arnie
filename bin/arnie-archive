@@ -137,6 +137,16 @@ def find_files( root, histfiles, excludes=[] ):
                 continue
 
         #
+        # Handle all symbolic links as files.
+        #
+        dirlinks=[]
+        for dn in dirs:
+            adn = join(rroot, dn)
+            if islink(adn):
+                dirs.remove(dn)
+                dirlinks.append(dn)
+
+        #
         # Handle root/current directory.
         #
 
@@ -157,16 +167,26 @@ def find_files( root, histfiles, excludes=[] ):
         #
         # Handle files.
         #
+        filesandlinks = files + dirlinks
         for basefn, fn, relfn in ((x, join(rroot, x), join(relroot, x))
-                                  for x in files):
+                                  for x in filesandlinks):
             # Skip the file if excluded.
             if excludedp(basefn):
                 continue
 
-            # Handle a file.
-            f = open(fn, 'r')
-            hexdigest = md5.new(f.read()).hexdigest()
-            f.close()
+            if not islink(fn):
+                # Handle files.
+                f = open(fn, 'r')
+                hexdigest = md5.new(f.read()).hexdigest()
+                f.close()
+            else:
+                # Handle symbolic links
+                #
+                # Note: we calculate the CRC from the target name of the
+                # symbolic link, not the contents of the file pointed to.
+                linktarget = os.readlink(fn)
+                hexdigest = md5.new(linktarget).hexdigest()
+
             filemode = getmode(fn)
 
             newentry = (relfn, (hexdigest, filemode))
@@ -431,6 +451,9 @@ def main():
                 s += '(Backup aborted due to errors.  File deleted/not sent.)'
                 raise SystemExit(s)
 
+        if opts.verbose:
+            print '=== Archive size: %d bytes' % getsize(outfn)
+
         # Send the backup file to its remote host if requested.
         if remote_host:
             if opts.verbose:
@@ -473,7 +496,7 @@ def main():
 
     # The last line will contain the name of the output archive file.
     if opts.verbose:
-        print "=== Done"
+        print "=== Done."
 
     print outfn
     return 0

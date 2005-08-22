@@ -39,6 +39,9 @@ if sys.version_info[:2] < (2, 4):
 import os, re, md5, datetime, StringIO, stat
 import tarfile
 from os.path import *
+from os.path import lexists
+# FIXME: lexists() is missing from __all__ in 2.4.1 posixpath.
+# Bug submitted to Python tracker [1266283].
 
 history_fn = '.arniehistory'
 
@@ -228,7 +231,10 @@ def verify( histfiles, root ):
     for relfn, attrs in histfiles.iteritems():
         # check existence
         fn = join(root, relfn)
-        if not exists(fn):
+
+        # Note: we use lexists() instead of exists() here, because symlink
+        # targets may not exist.
+        if not lexists(fn): 
             print >> err, errfmt % ('missing-file', relfn)
             continue
 
@@ -239,9 +245,17 @@ def verify( histfiles, root ):
             print >> err, errfmt % ('invalid-mode', relfn)
 
         if crc is not None:
-            f = open(fn, 'r')
-            hexdigest = md5.new(f.read()).hexdigest()
-            f.close()
+            if not islink(fn):
+                f = open(fn, 'r')
+                hexdigest = md5.new(f.read()).hexdigest()
+                f.close()
+            else:
+                # Handle symbolic links.
+                #
+                # Note: Calculate CRC from the target name of the symbolic link,
+                # not the contents of the file pointed to.
+                linktarget = os.readlink(fn)
+                hexdigest = md5.new(linktarget).hexdigest()             
 
             if crc != hexdigest:
                 print >> err, errfmt % ('invalid-contents', relfn)
@@ -254,7 +268,17 @@ def verify( histfiles, root ):
     for rroot, dirs, files in os.walk(root):
         relroot = rroot[rlen:]
         resfiles.add(relroot)
-        for fn in files:
+
+        # Handle symbolic links as files.
+        dirlinks=[]
+        for dn in dirs:
+            adn = join(rroot, dn)
+            if islink(adn):
+                dirs.remove(dn)
+                dirlinks.append(dn)
+
+        filesandlinks = files + dirlinks      
+        for fn in filesandlinks:
             resfiles.add(join(relroot, fn))
 
     for fn in resfiles ^ set(histfiles):
