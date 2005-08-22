@@ -8,6 +8,10 @@ Version 1.1: (minor features release)
 - Support for symlinks, symlinks to directories and non-existing symlinks
   (submitted Harry Flink <harppa at steo dot fi>, new tests add by blais)
 
+- Print out the archive size in verbose mode.  This is useful when running from
+  a crontab, you can check the amount of bytes transferred in the log file or
+  log email.
+
 
 Version 1.0: (initial release)
 ------------------------------
