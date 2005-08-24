@@ -2,5 +2,64 @@
    TODO: arnie
 =================
 
+Misc Ideas
+----------
 
-- Support user/group (and change of)
+- Print size of every file added to the backup.
+- Support user/group file attributes (and change of).
+
+- Add uid, gid, ctime, mtime, and a flags array to file info.
+
+
+Tracking new attributes and Storing attributses separately from contents
+------------------------------------------------------------------------
+
+Ideas from Harry Flink for desired features:
+
+  There are still some features which might be good to add some day:
+
+  1. uid/gid/mode changes shouldn't neccessarily add the whole file,
+     if file data (MD5) is not changed, just the file's meta info.
+
+  2. GPG-files should be extracted in fly to avoid making duplicates
+     from the backups for extraction. I'm not sure how exactly this
+     could be done, but I hope that somehow.
+
+  3. I haven't tested whether modification times are stored and
+     restored, but still it would be great to add them in .arniehistory.
+
+  4. Maybe ACL-support someday, but I dont use them currently.
+  
+
+For (1) I would use a flag, that tells the restorer to "keep searching backwards
+in time" for that one file, but which marks the attributes to be applied after.
+This will require some more thinking, maybe all attributes should behave in this
+way (i.e. if only mode changes, then no need to store the file again either).
+
+I think the next modification to arnie will be this:  I will add uid, gid,
+ctime, mtime and an array of flags to each file info.  This will allow me to
+implement future features without having to change the format, and thus to
+remain backwards compatible.
+
+cheers,
+
+Testing for uid/gid changes
+---------------------------
+
+Testing uid/gid's::
+
+  From Harry Flink:
+
+  > Yes, I noticed that the problem is only in incremental changes.
+  > But if I'm using this in production server, it might save some
+  > time to track the changes too. Also this minimizes one side risk:
+  > If you try to restore backup with non-root user account, the
+  > uid/gid are not set everytime correctly. I even restored the
+  > archive with SUDO at /tmp/testrestore and still the owner was
+  > not updated. With root account it works properly, but this new
+  > uid/gid tracking saved me from lot a trouble already, because
+  > it told me that something was wrong and I was able to track
+  > down that restoring with root account there are not such problems
+  > at all.
+  
+  Good note.  I will use this to build the tests (I will include a test with sudo).
