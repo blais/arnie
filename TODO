@@ -63,3 +63,18 @@ Testing uid/gid's::
   > at all.
   
   Good note.  I will use this to build the tests (I will include a test with sudo).
+
+
+
+  > The flag is a good idea.  In restore you could build a
+  > statuschanges={} -dict and when the flag is found (I mean the
+  > flag to notify that content shouldnt be added, but just
+  > perm/time/owner etc is being changed), add the filename to the
+  > dict with final values and continue restoring normally. Exception
+  > to this is that if filename is already in statuschanges, then
+  > dont modify statuschanges -item anymore for that file. After
+  > restoring everything, modify file status (perm/time/owner) of all
+  > items in dictionary.  Also we should return the dictionary from
+  > restore to pass it to the verify (or modify something else, so
+  > that verify knows the correct values).
+
