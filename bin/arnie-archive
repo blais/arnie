@@ -120,7 +120,7 @@ def find_files( root, histfiles, excludes=[] ):
     remlen = len(root) + 1
     for rroot, dirs, files in os.walk(root):
         relroot = rroot[remlen:]
-        if opts.verbose:
+        if opts.verbose > 1:
             print "Visiting...", relroot
 
         # Remove history file so that we do not back it up.
@@ -299,7 +299,8 @@ def main():
     import optparse
     parser = optparse.OptionParser(__doc__.strip())
 
-    parser.add_option('-v', '--verbose', action='store_true',
+    parser.add_option('-v', '--verbose', action='count',
+                      default=0,
                       help="Output progress information verbosely.")
 
     parser.add_option('-H', '--history', action='store',
