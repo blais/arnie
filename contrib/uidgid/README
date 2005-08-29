@@ -1,0 +1,4 @@
+Patches submitted by Harry Flink to support uid/gid.
+
+These are postponed for now because I will add the uid, gid, ctime, mtime attributes
+to the file format all at once.

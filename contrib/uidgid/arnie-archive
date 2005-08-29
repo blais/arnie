@@ -1,0 +1,535 @@
+#!/usr/bin/env python
+#
+# Copyright (C) 2005  Martin Blais <blais@furius.ca>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+
+"""
+arnie-archive [<options>] <root> [<arch-dir>]
+
+Arnie archiver program (simple incremental backups system).  This program
+creates a simple archive of files that have changed since it was last run.
+
+The first line it outputs on stdout is the name of the archive file that gets
+created.  If no archive output directory is supplied, the backup file is created
+in the tmp directory.  See options to influence the output filename that is
+generated (This program builds the output filename itself because it relies on
+the date format in the name to order the files properly for restore).
+
+If <arch-dir> is in the format [<user>@]<hostname>:<filename>, we automatically
+send the backup file to the remote host via scp.  No temporary file is kept
+locally.
+
+See documentation at http://furius.ca/arnie for more details.
+"""
+
+import sys
+if sys.version_info[:2] < (2, 4):
+    raise SystemExit("Error: you need Python >=2.4 to run this program.")
+
+import os, re, md5, time, datetime, StringIO, tempfile, stat
+from itertools import chain
+import tarfile
+from subprocess import Popen, PIPE
+from os.path import *
+
+history_fn = '.arniehistory'
+
+#-------------------------------------------------------------------------------
+#
+dircrc_re = re.compile('^\s+$')
+
+def read_history( histfile ):
+    """
+    Read the history file.
+    If the history file cannot be found, returns an empty list.
+    Note: this is supposed to be able to support filenames with spaces.
+
+    Arguments:
+    - fn: the filename to read -> string
+
+    Returns: a dict of entries.
+
+    Each entry consists in a tuple of (crc, mode) for the file.
+    If the file is a directory, the crc is None.
+    """
+    files = {}
+    # have to read all lines at once for file from tarfile
+    for line in histfile.readlines():
+        crc = line[0:32]
+        if dircrc_re.match(crc):
+            crc = None # directory
+        perms = int(line[33:39], 8)
+        if line[39] == " ": # Arnie v1.0-v1.1 format (for backwards compatibility)
+            filename = line[40:].strip()
+            uid,gid = None,None
+        elif line[39] == ":": # Arnie v1.2- format
+            # Reserve for upcoming format changes
+            if line[51] != " ":
+                msg=str(histfile)+" is probably newer than current version of " \
+                     "arnie-archive can read.\nPlease get newest arnie from " \
+                     "http://furius.ca/arnie/."
+                raise NotImplementedError, msg
+            # Arnie v1.2 format (includes uid and gid)
+            uid=int(line[40:45].strip(),10)
+            gid=int(line[46:51].strip(),10)
+            filename=line[52:].strip()
+        else:
+            msg=str(histfile)+" is probably newer than current version of " \
+                 "arnie-archive can read.\nPlease get newest arnie from " \
+                 "http://furius.ca/arnie/."
+            raise NotImplementedError, msg
+        files[filename] = (crc, perms, uid, gid)
+    return files
+
+
+#-------------------------------------------------------------------------------
+#
+def getmodeandowner( fn ):
+    """
+    Stat that does not follow symlinks that just returns the mode.
+    """
+    if hasattr(os, "lstat"):
+        statres = os.lstat(fn)
+    else:
+        statres = os.stat(fn)
+    return statres.st_mode, statres.st_uid, statres.st_gid
+
+
+#-------------------------------------------------------------------------------
+#
+def find_files( root, histfiles, excludes=[] ):
+    """
+    Find the new files to be backed up.
+
+    :Arguments:
+    - root: the root directory to search into -> string
+    - histfiles: history files to compare against -> dict of tuples
+    - excludes: list of regular expressions to exclude files -> list of re
+
+    :Return Value: -> a tuple of lists
+    - alldirs: the entire list of directories visited during the traversal
+    - incrdirs: the list of dirs to add to the archive
+    - allfiles: the entire list of files visited during the traversal
+    - incrfiles: the list of files to add to the archive
+
+    The filenames returned are relative to the root directory.
+    """
+    def excludedp( fn ):
+        "Return true if the filename is to be excluded."
+        for exre in excludes:
+            if exre.match(fn):
+                return True
+
+    allfiles, alldirs = [], []
+    incrfiles, incrdirs = [], []
+    remlen = len(root) + 1
+    for rroot, dirs, files in os.walk(root):
+        relroot = rroot[remlen:]
+        if opts.verbose:
+            print "Visiting...", relroot
+
+        # Remove history file so that we do not back it up.
+        if rroot == root:
+            try:
+                files.remove(history_fn)
+            except ValueError:
+                pass
+
+        # Skip future visited directories if excluded.
+        for dn in dirs:
+            if excludedp(dn):
+                dirs.remove(dn)
+                continue
+
+        #
+        # Handle all symbolic links as files.
+        #
+        dirlinks=[]
+        for dn in dirs:
+            adn = join(rroot, dn)
+            if islink(adn):
+                dirs.remove(dn)
+                dirlinks.append(dn)
+
+        #
+        # Handle root/current directory.
+        #
+
+        # Add to complete list.
+        dirmode, diruid, dirgid = getmodeandowner(rroot)
+        newentry = (relroot, (None, dirmode, diruid, dirgid))
+        alldirs.append(newentry)
+
+        # Check against history and determine if we need to backup.
+        try:
+            crc, histmode, histuid, histgid = histfiles[relroot]
+            assert crc is None
+            if dirmode != histmode or histuid is None or histuid != diruid or \
+                   histgid is None or histgid != dirgid:
+                incrdirs.append(newentry)
+        except KeyError:
+            incrdirs.append(newentry)
+
+        #
+        # Handle files and symbolic links.
+        #
+        filesandlinks = files + dirlinks
+        for basefn, fn, relfn in ((x, join(rroot, x), join(relroot, x))
+                                  for x in filesandlinks):
+            # Skip the file if excluded.
+            if excludedp(basefn):
+                continue
+
+            if not islink(fn):
+                # Handle files.
+                f = open(fn, 'r')
+                hexdigest = md5.new(f.read()).hexdigest()
+                f.close()
+            else:
+                # Handle symbolic links
+                #
+                # Note: we calculate the CRC from the target name of the
+                # symbolic link, not the contents of the file pointed to.
+                linktarget = os.readlink(fn)
+                hexdigest = md5.new(linktarget).hexdigest()
+
+            filemode, fileuid, filegid = getmodeandowner(fn)
+            newentry = (relfn, (hexdigest, filemode, fileuid, filegid))
+
+            # Add to complete list.
+            allfiles.append(newentry)
+
+            # Check against history and determine if we need to backup.
+            try:
+                histcrc, histmode, histuid, histgid = histfiles[relfn]
+
+                if hexdigest == histcrc and filemode == histmode \
+                       and histuid is not None and histuid==fileuid \
+                       and histgid is not None and histgid==filegid:
+                    continue # skip the file
+            except KeyError:
+                pass
+            incrfiles.append(newentry)
+
+    return alldirs, incrdirs, allfiles, incrfiles
+
+#-------------------------------------------------------------------------------
+#
+def create_history_file( alldirs, allfiles ):
+    """
+    Overwrite the history file.
+
+    Arguments:
+    - alldirs: list of directory entries to output.
+    - allfiles: list of file entries to output.
+
+    Each entry consists of a tuple in the form (filename, (crc, mode))
+    """
+    f = StringIO.StringIO()
+    for filename, attrs in chain(alldirs, allfiles):
+        crc, mode, uid, gid = attrs
+        crc = crc or ''
+        print >> f, '%32s %06o:%05i %05i %s' % (crc, mode, uid, gid, filename)
+    return f.getvalue()
+
+
+#-------------------------------------------------------------------------------
+#
+def backup_files( root, incrdirs, incrfiles, hist_contents, outfn ):
+    """
+    Backup the given list of files to the output archive.
+
+    :Returns: the name of the final output filename.
+    """
+    # create the archive file
+    tar = tarfile.open(outfn, 'w:%s' % opts.compression)
+
+    # add the history filelist first
+    hinfo = tarfile.TarInfo(history_fn)
+    hinfo.size = len(hist_contents)
+    hinfo.mtime = time.time()
+    hfile = StringIO.StringIO(hist_contents)
+    t1 = hinfo.mtime
+    tar.addfile(hinfo, hfile)
+
+    # add all the incremental directories
+    for reldn, attrs in incrdirs:
+        if opts.verbose:
+            print "Adding...", reldn
+
+        tar.add(join(root, reldn), reldn, recursive=False)
+
+    # add all the incremental files to be backed up
+    for relfn, attrs in incrfiles:
+        if opts.verbose:
+            print "Adding...", relfn
+
+        tar.add(join(root, relfn), relfn)
+
+    tar.close()
+
+
+#-------------------------------------------------------------------------------
+#
+def exists_remote_dir( hostname, rdir ):
+    """
+    Checks if a remote directory exists. Returns True if it does.
+
+    >>> exists_remote_dir('localhost', '/tmp')
+    True
+
+    >>> exists_remote_dir('localhost', '/tmp/does-not-exist')
+    False
+
+    >>> try:
+    ...    exists_remote_dir('127.0.0.0', '/tmp/does-not-exist')
+    ...    assert False
+    ... except SystemExit:
+    ...    pass
+
+    """
+    cmd = ['ssh', hostname, 'test', '-d', rdir]
+    p = Popen(cmd, stdout=PIPE, stderr=PIPE)
+    sout, serr = p.communicate()
+    if p.returncode != 0:
+        if sout or serr:
+            raise SystemExit(
+                "Error: could not check remote directory...\n%s" % serr)
+    return p.returncode == 0
+
+#-------------------------------------------------------------------------------
+#
+def main():
+    """
+    Main program.
+    """
+    import optparse
+    parser = optparse.OptionParser(__doc__.strip())
+
+    parser.add_option('-v', '--verbose', action='store_true',
+                      help="Output progress information verbosely.")
+
+    parser.add_option('-H', '--history', action='store',
+                      help="History file location (default lies in rootdir)")
+
+    parser.add_option('-f', '-F', '--full', action='store_true',
+                      help="Ignore history file and perform a full backup")
+
+    parser.add_option('-x', '--no-empty', action='store_true',
+                      help="Do not create empty incremental backups.")
+
+    parser.add_option('-p', '--prefix', action='store',
+                      default='backup',
+                      help="Prefix for backup files.")
+
+    parser.add_option('-c', '--compression', action='store',
+                      type='choice', metavar='EXT',
+                      choices=['', 'bz2', 'gz'],
+                      default='',
+                      help="Compress backups with the given scheme")
+
+    parser.add_option('-E', '--encrypt', action='store',
+                      help="Encrypt with the given PGP key")
+
+    parser.add_option('--test-time', action='store', type='int',
+                      help="Provide an artificial date to set for the backup "
+                      "archive.  This is used only by our test suite to "
+                      "simulate dated restores.  If you need this for real, "
+                      "please contact the author for details.")
+
+    parser.add_option('-e', '--exclude', action='append',
+                      default=[],
+                      help="Regular expression patterns for files to ignore.")
+
+    global opts
+    opts, args = parser.parse_args()
+
+    # Check arguments.
+    if len(args) not in [1, 2]:
+        parser.error("You must specify a root directory to archive, and "
+                     "optionally a destination directory to store the new "
+                     "file in.")
+    root = normpath(args[0])
+    remote_host, remote_dir = None, None
+    if len(args) == 2:
+        archdir = args[1]
+        remote_re = re.compile('((?:[\w.]+@)?[\w.]+):(.+)')
+        mo = remote_re.match(archdir)
+        if mo:
+            remote_host, remote_dir = mo.group(1, 2)
+            archdir = tempfile.gettempdir() # put the archive there temporarily
+    else:
+        archdir = tempfile.gettempdir()
+
+    # Compile and check regular expressions.
+    try:
+        excludes = [re.compile(x) for x in opts.exclude]
+    except re.error, e:
+        raise SystemExit("Error: could not compile regexp %s" % e)
+
+    if opts.verbose:
+        print "=== Checking directories"
+
+    # Check root directory.
+    if not exists(root):
+        raise SystemExit("Error: directory to backup does not exist %s" % root)
+
+    # Check archive directory.
+    if remote_host is None:
+        if not exists(archdir):
+            raise SystemExit("Error: The local archive directory must exist.")
+    else:
+        if not exists_remote_dir(remote_host, remote_dir):
+            raise SystemExit("Error: The remote archive directory must exist.")
+
+    if opts.history is None:
+        opts.history = abspath(join(root, history_fn))
+
+    # Read the history file.
+    if opts.full:
+        histfiles = {}
+    else:
+        try:
+            hfile = open(opts.history)
+            histfiles = read_history(hfile)
+            hfile.close()
+        except IOError, e:
+            print >> sys.stderr, ("Warning: history file not present. "
+                                  "Doing full backup.")
+            if e.errno != 2:
+                raise
+            histfiles = {} # no history file, create empty
+
+    # Find the entire list of files, and the list of files to backup.
+    if opts.verbose:
+        print '=== Finding list of files to backup'
+    (alldirs, incrdirs,
+     allfiles, incrfiles) = find_files(root, histfiles, excludes)
+
+    # If there are no files to backup, optionally do not output the backup file.
+    if opts.no_empty:
+        if not incrdirs and not incrfiles:
+            print >> sys.stderr, "(No files to backup. Backup skipped.)"
+            return 2 # Return special status.
+
+    # Select output filename and timestamp.
+    if not opts.test_time:
+        now = datetime.datetime.now()
+    else:
+        now = datetime.datetime.fromtimestamp(opts.test_time)
+    tstamp = '%s.%s%02d' % (now.date().isoformat(),
+                            now.strftime('%H%M%S'),
+                            now.microsecond / 10000)
+
+    # Compute contents of the new history file.
+    if opts.verbose:
+        print '=== Creating history file'
+    hist_contents = create_history_file(alldirs, allfiles)
+
+    # Determine name of the backup file.
+    pfxoutfn = join(archdir, '%s.%s' % (opts.prefix, tstamp))
+    outfn = '%s.tar' % pfxoutfn
+    if opts.compression:
+        outfn = '%s.%s' % (outfn, opts.compression)
+    encfn = None # For the temporary encrypted file.
+
+    try:
+        # Do backups...
+        if opts.verbose:
+            print "=== Filling up archive '%s'" % outfn
+        backup_files(root, incrdirs, incrfiles, hist_contents, outfn)
+
+        # Encrypt the file with the given key if requested.
+        if opts.encrypt:
+            if opts.verbose:
+                print '=== Encrypting archive'
+
+            encfn = '%s.gpg' % outfn
+            p = Popen(['gpg', '--encrypt', '--recipient=%s' % opts.encrypt,
+                       '--output=%s' % encfn, outfn],
+                      stdout=PIPE, stderr=PIPE)
+            sout, serr = p.communicate()
+            if p.returncode == 0:
+                os.remove(outfn)
+                outfn = encfn
+            else:
+                s = "Error: encrypting the file (%s)\n" % p.returncode
+                s += sout + '\n' + serr + '\n'
+                s += '(Backup aborted due to errors.  File deleted/not sent.)'
+                raise SystemExit(s)
+
+        if opts.verbose:
+            print '=== Archive size: %d bytes' % getsize(outfn)
+
+        # Send the backup file to its remote host if requested.
+        if remote_host:
+            if opts.verbose:
+                print "=== Sending archive to remote host '%s' in dir '%s'" % \
+                      (remote_host, remote_dir)
+
+            p = Popen(['scp', outfn, '%s:%s' % (remote_host, remote_dir)],
+                      stdout=PIPE, stderr=PIPE)
+            sout, serr = p.communicate()
+            if p.returncode != 0:
+                raise SystemExit(
+                    "Error: copying the file to remote host (%s)" %
+                    sout + os.linesep + serr)
+
+            # Clean up temporary files.
+            if opts.verbose:
+                print '=== Cleaning up'
+
+            os.remove(outfn)
+
+            # Output the filename of the remote file.
+            outfn = join('%s:%s' % (remote_host, remote_dir), basename(outfn))
+
+    except Exception:
+        # Cleanup temporary files if there is an error.
+        for fn in [outfn, encfn]:
+            if fn and exists(fn):
+                os.remove(fn)
+        raise
+
+    # Overwrite the history file.
+    if opts.verbose:
+        print "=== Writing history file '%s'" % opts.history
+    try:
+        f = open(opts.history, 'w')
+        f.write(hist_contents)
+        f.close()
+    except IOError, e:
+        raise SystemExit("Error: Could not (over)write history file.'")
+
+    # The last line will contain the name of the output archive file.
+    if opts.verbose:
+        print "=== Done."
+
+    print outfn
+    return 0
+
+
+def _test():
+    import doctest; doctest.testmod()
+
+if __name__ == '__main__':
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        print >> sys.stderr, 'Interrupted.'
+        sys.exit(1)
+
