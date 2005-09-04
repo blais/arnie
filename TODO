@@ -11,8 +11,8 @@ Misc Ideas
 - Add uid, gid, ctime, mtime, and a flags array to file info.
 
 
-Tracking new attributes and Storing attributses separately from contents
-------------------------------------------------------------------------
+Tracking new attributes and Storing attributes separately from contents
+-----------------------------------------------------------------------
 
 Ideas from Harry Flink for desired features:
 
@@ -78,3 +78,10 @@ Testing uid/gid's::
   > restore to pass it to the verify (or modify something else, so
   > that verify knows the correct values).
 
+
+
+Compressing Backups
+-------------------
+
+Existing backup archives could be joined and compressed at a new date, easily,
+by writing a new program which would be a variation on arnie-restore.
