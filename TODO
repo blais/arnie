@@ -11,6 +11,26 @@ Misc Ideas
 - Add uid, gid, ctime, mtime, and a flags array to file info.
 
 
+
+Slow Operation
+--------------
+
+Implement alternate unpacking method, untarring files one on top of the
+other and removing unwanted files later.
+
+- Note from Mukund <muks@mukund.org>::
+
+   One minor inconvenience that I do notice is that restore times are
+   very very slow (almost unusably slow) when a directory with a large
+   number of files such as a Maildir tree are involved. I guess this is
+   due to tar archive parsing on a per-file basis through Python's
+   library and I remember reading somewhere on your website that you
+   were thinking of untarring all of the backup archive in one go and
+   then just picking up whatever files one wanted. I'd be grateful if
+   you implement this feature.
+
+
+
 Tracking new attributes and Storing attributes separately from contents
 -----------------------------------------------------------------------
 
