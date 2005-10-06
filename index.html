@@ -16,15 +16,42 @@
 
 <div class="document" id="arnie-simple-incremental-backups">
 <h1 class="title">arnie: Simple Incremental Backups</h1>
-<div class="section" id="description">
-<h1><a name="description">Description</a></h1>
+<div class="contents topic">
+<p class="topic-title first"><a id="contents" name="contents">Contents</a></p>
+<ul class="simple">
+<li><a class="reference" href="#description" id="id1" name="id1">Description</a><ul>
+<li><a class="reference" href="#context" id="id2" name="id2">Context</a></li>
+<li><a class="reference" href="#basic-functioning-and-features" id="id3" name="id3">Basic Functioning and Features</a><ul>
+<li><a class="reference" href="#features" id="id4" name="id4">Features</a></li>
+<li><a class="reference" href="#caution" id="id5" name="id5">Caution</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference" href="#documentation" id="id6" name="id6">Documentation</a></li>
+<li><a class="reference" href="#download" id="id7" name="id7">Download</a></li>
+<li><a class="reference" href="#installation-and-packaging" id="id8" name="id8">Installation and Packaging</a></li>
+<li><a class="reference" href="#testing" id="id9" name="id9">Testing</a></li>
+<li><a class="reference" href="#reporting-bugs" id="id10" name="id10">Reporting Bugs</a></li>
+<li><a class="reference" href="#installation" id="id11" name="id11">Installation</a><ul>
+<li><a class="reference" href="#dependencies" id="id12" name="id12">Dependencies</a></li>
+<li><a class="reference" href="#portability" id="id13" name="id13">Portability</a></li>
+</ul>
+</li>
+<li><a class="reference" href="#external-links" id="id14" name="id14">External Links</a></li>
+<li><a class="reference" href="#copyright-license-and-disclaimer" id="id15" name="id15">Copyright, License and Disclaimer</a></li>
+<li><a class="reference" href="#author" id="id16" name="id16">Author</a></li>
+</ul>
+</div>
+<div class="section">
+<h1><a class="toc-backref" href="#id1" id="description" name="description">Description</a></h1>
 <p>In a single sentence, arnie is: a tremendously <em>simple</em> system for performing
 incremental backups to remote untrusted hosts, with support for encrypted files
 on the remote host.  While our scripts are simple and recent, we believe they
 are robust and are in active use on the author's own servers, and we provide a
 comprehensive suite of tests to prove it.</p>
-<div class="section" id="context">
-<h2><a name="context">Context</a></h2>
+<div class="section">
+<h2><a class="toc-backref" href="#id2" id="context" name="context">Context</a></h2>
 <p>Our goal is to provide a <em>very simple</em> and robust script to perform incremental
 backups.</p>
 <p>The original context for the creation of this program was that we had access to
@@ -41,8 +68,8 @@ time and work to setup than writing my own simplistic solution.</p>
 (e.g. IBackup) will make this simple scheme for backups attractive for many
 other people.  This is why I provide this code as open source.</p>
 </div>
-<div class="section" id="basic-functioning-and-features">
-<h2><a name="basic-functioning-and-features">Basic Functioning and Features</a></h2>
+<div class="section">
+<h2><a class="toc-backref" href="#id3" id="basic-functioning-and-features" name="basic-functioning-and-features">Basic Functioning and Features</a></h2>
 <p>The system consists in two self-contained Python scripts: the archiver
 (<tt class="docutils literal"><span class="pre">arnie-archive</span></tt>) and the restorer (<tt class="docutils literal"><span class="pre">arnie-restore</span></tt>).</p>
 <p>Essentially, the arnie archiver creates a tar archive with all the files that have
@@ -79,8 +106,8 @@ manually before running the restorer, for example:</p>
 gpg --decrypt-files backup.*
 </pre>
 <p>The restorer will ignore encrypted files in the backups directory.</p>
-<div class="section" id="features">
-<h3><a name="features">Features</a></h3>
+<div class="section">
+<h3><a class="toc-backref" href="#id4" id="features" name="features">Features</a></h3>
 <p>In addition, the following features are provided (see options):</p>
 <ul class="simple">
 <li>Automatically compress archives in gzip or bzip2 format;</li>
@@ -99,8 +126,8 @@ has an option);</li>
 if so desired.</li>
 </ul>
 </div>
-<div class="section" id="caution">
-<h3><a name="caution">Caution</a></h3>
+<div class="section">
+<h3><a class="toc-backref" href="#id5" id="caution" name="caution">Caution</a></h3>
 <p>The arnie tools do <em>not</em> incrementally archive changes in user/group ids nor
 access, modification or creation times (however, they could very easily be
 modified to do so and I might do that at some point).  They do, however, track
@@ -116,8 +143,8 @@ to intermediate size files (such as a CVS source code repository).</p>
 </div>
 </div>
 </div>
-<div class="section" id="documentation">
-<h1><a name="documentation">Documentation</a></h1>
+<div class="section">
+<h1><a class="toc-backref" href="#id6" id="documentation" name="documentation">Documentation</a></h1>
 <p>There is no special manual, the manual consists in this README file and the
 <tt class="docutils literal"><span class="pre">--help</span></tt> switch will provide ample details about invocation. Run the scripts
 like this to get full details:</p>
@@ -131,34 +158,34 @@ arnie-archive --help
 <li><a class="reference" href="doc/arnie-design.html">Design Notes (Internal Notes)</a>;</li>
 </ul>
 </div>
-<div class="section" id="download">
-<h1><a name="download">Download</a></h1>
+<div class="section">
+<h1><a class="toc-backref" href="#id7" id="download" name="download">Download</a></h1>
 <p>The latest release is always available in the <a class="reference" href="/downloads/arnie">download area</a>.</p>
 </div>
-<div class="section" id="installation-and-packaging">
-<h1><a name="installation-and-packaging">Installation and Packaging</a></h1>
+<div class="section">
+<h1><a class="toc-backref" href="#id8" id="installation-and-packaging" name="installation-and-packaging">Installation and Packaging</a></h1>
 <p>Simply copy the <tt class="docutils literal"><span class="pre">arnie/bin/arnie-archive</span></tt> and <tt class="docutils literal"><span class="pre">arnie/bin/arnie-restore</span></tt> scripts to
 <tt class="docutils literal"><span class="pre">/usr/bin</span></tt>.</p>
 </div>
-<div class="section" id="testing">
-<h1><a name="testing">Testing</a></h1>
+<div class="section">
+<h1><a class="toc-backref" href="#id9" id="testing" name="testing">Testing</a></h1>
 <p>If you want to run the test suite, download the source code and see the
 instructions under the <tt class="docutils literal"><span class="pre">test</span></tt> subdirectory (very simple, one Python script to
 run).  In case you have a question, it should be extremely easy to add new tests
 to the test code.</p>
 </div>
-<div class="section" id="reporting-bugs">
-<h1><a name="reporting-bugs">Reporting Bugs</a></h1>
+<div class="section">
+<h1><a class="toc-backref" href="#id10" id="reporting-bugs" name="reporting-bugs">Reporting Bugs</a></h1>
 <p>Send email to the author: Martin Blais &lt;<a class="reference" href="mailto:blais&#64;furius.ca">blais&#64;furius.ca</a>&gt;.</p>
 <p>If you would like to add new features, please contact the author for advice.
 Please contribute your changes or additional test code back to the author, we
 will be happy to include your changes if they are generic and could benefit
 others.</p>
 </div>
-<div class="section" id="installation">
-<h1><a name="installation">Installation</a></h1>
-<div class="section" id="dependencies">
-<h2><a name="dependencies">Dependencies</a></h2>
+<div class="section">
+<h1><a class="toc-backref" href="#id11" id="installation" name="installation">Installation</a></h1>
+<div class="section">
+<h2><a class="toc-backref" href="#id12" id="dependencies" name="dependencies">Dependencies</a></h2>
 <p>We have tried to minimize the dependencies of the arnie scripts in order to keep
 them simple and working in as many environments as posarniele.</p>
 <ul class="simple">
@@ -171,23 +198,23 @@ the ssh and scp clients installed.</li>
 <p>We invoke the client programs rather than use Python bindings for these last few
 options, in order to avoid yet more dependencies.</p>
 </div>
-<div class="section" id="portability">
-<h2><a name="portability">Portability</a></h2>
+<div class="section">
+<h2><a class="toc-backref" href="#id13" id="portability" name="portability">Portability</a></h2>
 <p>We have not tested arnie under Windows yet, but there is no reason why it should
 not work.  If you encounter problems or success using it on Windows, please let
 me know via email.</p>
 </div>
 </div>
-<div class="section" id="external-links">
-<h1><a name="external-links">External Links</a></h1>
+<div class="section">
+<h1><a class="toc-backref" href="#id14" id="external-links" name="external-links">External Links</a></h1>
 <ul class="simple">
 <li><a class="reference" href="http://furius.ca/arnie">Official Homepage</a></li>
 <li><a class="reference" href="http://freshmeat.net/projects/arnie">Freshmeat Application Index</a></li>
 <li><a class="reference" href="http://furius.ca">Author's Homepage</a></li>
 </ul>
 </div>
-<div class="section" id="copyright-license-and-disclaimer">
-<h1><a name="copyright-license-and-disclaimer">Copyright, License and Disclaimer</a></h1>
+<div class="section">
+<h1><a class="toc-backref" href="#id15" id="copyright-license-and-disclaimer" name="copyright-license-and-disclaimer">Copyright, License and Disclaimer</a></h1>
 <p>Copyright (C) 2005  Martin Blais.  All Rights Reserved.
 This code is distributed under the <a class="reference" href="COPYING">GNU General Public License</a>;</p>
 <p>We are <em>NOT</em> responsible for any data loss resulting from the use of these
@@ -196,8 +223,8 @@ If you do not test your backups, you do <em>NOT</em> have backups.  Test the arc
 and restore on the actual data that you will use it own as well.  If you don't
 understand the importance of this, we suggest you do not use the software.</p>
 </div>
-<div class="section" id="author">
-<h1><a name="author">Author</a></h1>
+<div class="section">
+<h1><a class="toc-backref" href="#id16" id="author" name="author">Author</a></h1>
 <p>Martin Blais &lt;<a class="reference" href="mailto:blais&#64;furius.ca">blais&#64;furius.ca</a>&gt;</p>
 </div>
 </div>
