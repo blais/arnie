@@ -1,0 +1,10 @@
+Short-Description: A simple system for making incremental backups to untrusted remote sites.
+Official-Homepage: http://furius.ca/arnie
+Author: Martin Blais
+Author-Email: blais@furius.ca
+ChangeLog: http://furius.ca/arnie/CHANGES
+Announcement: http://freshmeat.net/projects/arnie/
+Download-Releases: http://furius.ca/downloads/arnie
+Download-Snapshots: http://furius.ca/downloads/arnie
+Bugs-Reporting: mailto:blais@furius.ca
+License: GNU GPL
