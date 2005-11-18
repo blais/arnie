@@ -2,75 +2,14 @@
    TODO: arnie
 =================
 
-Bugs from Uche
---------------
-
-
-  On Sat, 2005-11-12 at 10:34 -0500, Martin Blais wrote:
-  > It's the MD5 sum that seems to be crashing.
-  >
-  > Can you try the following:
-  > 1. split the md5.new(...) line in many statements
-  >
-  >   -> identify if it's the read or if it's the md5 that crashes
-  >
-  > 2. put a print statement for the current file
-  >
-  >    -> to identify which file makes it crash
-  >    -> list the properties of that file
-  >
-  > With this info I might be able to do something.
-  > thx
-  
-  It's dying on a huge file:
-  
-  Handling file /home/uche/media/dvd/rolie/vob/001/rolie-002.vob
-  Traceback (most recent call last):
-   File "/usr/bin/arnie-archive", line 515, in ?
-     sys.exit(main())
-   File "/usr/bin/arnie-archive", line 404, in main
-     (alldirs, incrdirs,
-   File "/usr/bin/arnie-archive", line 182, in find_files
-     t = f.read()
-  MemoryError
-  
-  # ls -l /home/uche/media/dvd/rolie/vob/001/rolie-002.vob
-  -rw-r--r--  1 uche uche 1073741824 Jun 23
-  23:24 /home/uche/media/dvd/rolie/vob/001/rolie-002.vob
-  
-  It definitely seems to slow down when trudging through large files.  I
-  wonder whether it's worth a config option to skip the MD5 check for
-  files above a certain size.
-  
-  > "Visiting... ome"
-  > >
-  > > Should be "home"
-  >
-  > Actually, this may be a major bug, and this may be the cause for the
-  > other problem.
-  >
-  > And can you apply this change and rerun and send some of the output?
-  
-  XXX /home ome
-  Visiting... ome
-  XXX /home/lost+found ome/lost+found
-  Visiting... ome/lost+found
-  XXX /home/uche ome/uche
-  Visiting... ome/uche
-  
-  That seems to be the consistent pattern.
-  
-  Thanks.
-
-
 Misc Ideas
 ----------
 
+- Add ctime, mtime, and a flags array to file info.
+
 - Print size of every file added to the backup.
+
 - Support user/group file attributes (and change of).
-
-- Add uid, gid, ctime, mtime, and a flags array to file info.
-
 
 
 Slow Operation
@@ -143,7 +82,8 @@ Testing uid/gid's::
   > down that restoring with root account there are not such problems
   > at all.
   
-  Good note.  I will use this to build the tests (I will include a test with sudo).
+  Good note.  I will use this to build the tests (I will include a test with
+  sudo).
 
 
 
@@ -164,5 +104,5 @@ Testing uid/gid's::
 Compressing Backups
 -------------------
 
-Existing backup archives could be joined and compressed at a new date, easily,
-by writing a new program which would be a variation on arnie-restore.
+Existing archive files could be joined and compressed together at a new date,
+easily, by writing a new program which would be a variation on arnie-restore.

@@ -2,6 +2,26 @@
     CHANGES: arnie
 ======================
 
+Version 1.2: (minor features release)
+-------------------------------------
+
+- Added more tests.
+
+- Added a dry-run option to the archive script.
+
+- Added storing uid and gid in arnie history file, but we're not checking
+  changes in those yet.  Adding the values in the file opens up the possibility
+  for making those checks in the future.
+
+- Fixed a bug when attempting to back up the root directory / (credits to Uche
+  Ogbuji for notifying of the problem).
+
+- Added an option to disregard the MD5 sums for large files (Uche Ogbuji's
+  idea).
+
+- Added the file size to the format of the history file.
+
+
 Version 1.1: (minor features release)
 -------------------------------------
 

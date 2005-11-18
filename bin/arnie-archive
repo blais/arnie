@@ -50,7 +50,22 @@ history_fn = '.arniehistory'
 
 #-------------------------------------------------------------------------------
 #
-dircrc_re = re.compile('^\s+$')
+class Entry:
+    """
+    An history file entry.
+    """
+    crc = None
+    size = None
+    mode = None
+    filename = None
+    uid = None
+    gid = None
+
+# Create a list of pairs of char extents for the file format.
+histpairs, last = [], 0
+for d in (32, 12, 6, 5, 5, 1000):
+    histpairs.append( (last, last+d) )
+    last = last+d+1
 
 def read_history( histfile ):
     """
@@ -63,18 +78,39 @@ def read_history( histfile ):
 
     Returns: a dict of entries.
 
-    Each entry consists in a tuple of (crc, mode) for the file.
+    Each entry consists in a tuple of (crc, size, mode) for the file.
     If the file is a directory, the crc is None.
     """
     files = {}
     # have to read all lines at once for file from tarfile
     for line in histfile.readlines():
-        crc = line[0:32]
-        if dircrc_re.match(crc):
-            crc = None # directory
-        perms = int(line[33:39], 8)
-        filename = line[40:].strip()
-        files[filename] = (crc, perms)
+        e = Entry()
+
+        crc, size, mode, uid, gid, filename = [
+            line[x[0]:x[1]].strip() for x in histpairs]
+        
+        # Get CRC
+        if crc:
+            e.crc = crc
+
+        # Get size
+        if size:
+            e.size = int(size)
+
+        # Get mode
+        e.mode = int(mode, 8)
+
+        # Get uid and gid
+        if uid:
+            e.uid = int(uid)
+        if gid:
+            e.uid = int(uid)
+
+        # Get filename
+        e.filename = filename
+
+        files[filename] = e
+
     return files
 
 #-------------------------------------------------------------------------------
@@ -98,7 +134,7 @@ def find_files( root, histfiles, excludes=[] ):
 
     :Arguments:
     - root: the root directory to search into -> string
-    - histfiles: history files to compare against -> dict of tuples
+    - histfiles: history files to compare against -> dict of entries.
     - excludes: list of regular expressions to exclude files -> list of re
 
     :Return Value: -> a tuple of lists
@@ -117,7 +153,15 @@ def find_files( root, histfiles, excludes=[] ):
 
     allfiles, alldirs = [], []
     incrfiles, incrdirs = [], []
-    remlen = len(root) + 1
+
+    # Calculate the number of characters to remove for the paths.
+    if root != '/':
+        remlen = len(root) + 1
+    else:
+        # We have to do a special case for the root "/" because normpath does an
+        # exception for this (i.e. normpath('/') == '/', and not '').
+        remlen = 1
+
     for rroot, dirs, files in os.walk(root):
         relroot = rroot[remlen:]
         if opts.verbose > 1:
@@ -151,15 +195,17 @@ def find_files( root, histfiles, excludes=[] ):
         #
 
         # Add to complete list.
-        dirmode = getmode(rroot)
-        newentry = (relroot, (None, dirmode))
+        e = Entry()
+        e.filename, e.mode = relroot, getmode(rroot)
+        newentry = (e.filename, e)
         alldirs.append(newentry)
 
         # Check against history and determine if we need to backup.
         try:
-            crc, histmode = histfiles[relroot]
-            assert crc is None
-            if dirmode != histmode:
+            ehist = histfiles[relroot]
+            assert ehist.crc is None
+            assert ehist.size is None
+            if e.mode != ehist.mode:
                 incrdirs.append(newentry)
         except KeyError:
             incrdirs.append(newentry)
@@ -174,11 +220,21 @@ def find_files( root, histfiles, excludes=[] ):
             if excludedp(basefn):
                 continue
 
+            # Compute the file's md5 sum if reasonable.
             if not islink(fn):
+                # Get the file's size.
+                filesize = getsize(fn)
+
                 # Handle files.
-                f = open(fn, 'r')
-                hexdigest = md5.new(f.read()).hexdigest()
-                f.close()
+                if (opts.crc_threshold is None or
+                    filesize < opts.crc_threshold):
+
+                    f = open(fn, 'r')
+                    hexdigest = md5.new(f.read()).hexdigest()
+                    f.close()
+                else:
+                    hexdigest = None
+
             else:
                 # Handle symbolic links
                 #
@@ -187,19 +243,33 @@ def find_files( root, histfiles, excludes=[] ):
                 linktarget = os.readlink(fn)
                 hexdigest = md5.new(linktarget).hexdigest()
 
-            filemode = getmode(fn)
+                # We don't check a link's size.
+                filesize = None
 
-            newentry = (relfn, (hexdigest, filemode))
+            filemode = getmode(fn)
+            st = os.lstat(fn)
+
+            e = Entry()
+            e.filename = relfn
+            e.crc, e.size, e.mode = hexdigest, filesize, filemode
+            e.uid, e.gid = st.st_uid, st.st_gid
+            newentry = (e.filename, e)
 
             # Add to complete list.
             allfiles.append(newentry)
 
             # Check against history and determine if we need to backup.
             try:
-                histcrc, histmode = histfiles[relfn]
+                ehist = histfiles[relfn]
 
-                if hexdigest == histcrc and filemode == histmode:
+                # Note: invariably checking the hexdigest combined with the
+                # crc-threshold option may yield a strange interaction but it
+                # should work in all cases.
+                if (e.crc == ehist.crc and
+                    e.size == ehist.size and
+                    e.mode == ehist.mode):
                     continue # skip the file
+
             except KeyError:
                 pass
             incrfiles.append(newentry)
@@ -215,14 +285,13 @@ def create_history_file( alldirs, allfiles ):
     Arguments:
     - alldirs: list of directory entries to output.
     - allfiles: list of file entries to output.
-
-    Each entry consists of a tuple in the form (filename, (crc, mode))
     """
     f = StringIO.StringIO()
-    for filename, attrs in chain(alldirs, allfiles):
-        crc, mode = attrs
-        crc = crc or ''
-        print >> f, '%32s %06o %s' % (crc, mode, filename)
+    for filename, e in chain(alldirs, allfiles):
+        sizestr = e.size and str(e.size) or ''
+        print >> f, ('%32s %12s %06o %5s %5s %s' %
+                     (e.crc or '', sizestr, e.mode,
+                      e.uid or '', e.gid or '', e.filename))
     return f.getvalue()
 
 
@@ -246,14 +315,14 @@ def backup_files( root, incrdirs, incrfiles, hist_contents, outfn ):
     tar.addfile(hinfo, hfile)
 
     # add all the incremental directories
-    for reldn, attrs in incrdirs:
+    for reldn, e in incrdirs:
         if opts.verbose:
             print "Adding...", reldn
 
         tar.add(join(root, reldn), reldn, recursive=False)
 
     # add all the incremental files to be backed up
-    for relfn, attrs in incrfiles:
+    for relfn, e in incrfiles:
         if opts.verbose:
             print "Adding...", relfn
 
@@ -303,6 +372,10 @@ def main():
                       default=0,
                       help="Output progress information verbosely.")
 
+    parser.add_option('-n', '--dry-run', action='store_true',
+                      help="Dry run, don't really create backup, "
+                      "don't write history file.")
+
     parser.add_option('-H', '--history', action='store',
                       help="History file location (default lies in rootdir)")
 
@@ -314,7 +387,7 @@ def main():
 
     parser.add_option('-p', '--prefix', action='store',
                       default='backup',
-                      help="Prefix for backup files.")
+                      help="Prefix for backup archives.")
 
     parser.add_option('-c', '--compression', action='store',
                       type='choice', metavar='EXT',
@@ -334,6 +407,14 @@ def main():
     parser.add_option('-e', '--exclude', action='append',
                       default=[],
                       help="Regular expression patterns for files to ignore.")
+
+    parser.add_option('-m', '--crc-threshold', action='store', type='int',
+                      default=None,
+                      help="Set a threshold for file size above which CRC "
+                      "checksums are never computed.  "
+                      "Default is to check MD5 on all files.")
+    # None means compute on all files,
+    # 0 means never compute MD5 on any files.
 
     global opts
     opts, args = parser.parse_args()
@@ -426,6 +507,10 @@ def main():
     if opts.compression:
         outfn = '%s.%s' % (outfn, opts.compression)
     encfn = None # For the temporary encrypted file.
+
+    if opts.dry_run:
+        print "=== Stopping due to dry-run, no backups done."
+        sys.exit(1)
 
     try:
         # Do backups...

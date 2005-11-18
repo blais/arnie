@@ -48,7 +48,22 @@ history_fn = '.arniehistory'
 
 #-------------------------------------------------------------------------------
 #
-dircrc_re = re.compile('^\s+$')
+class Entry:
+    """
+    An history file entry.
+    """
+    crc = None
+    size = None
+    mode = None
+    filename = None
+    uid = None
+    gid = None
+
+# Create a list of pairs of char extents for the file format.
+histpairs, last = [], 0
+for d in (32, 12, 6, 5, 5, 1000):
+    histpairs.append( (last, last+d) )
+    last = last+d+1
 
 def read_history( histfile ):
     """
@@ -61,18 +76,39 @@ def read_history( histfile ):
 
     Returns: a dict of entries.
 
-    Each entry consists in a tuple of (crc, mode) for the file.
+    Each entry consists in a tuple of (crc, size, mode) for the file.
     If the file is a directory, the crc is None.
     """
     files = {}
     # have to read all lines at once for file from tarfile
     for line in histfile.readlines():
-        crc = line[0:32]
-        if dircrc_re.match(crc):
-            crc = None # directory
-        perms = int(line[33:39], 8)
-        filename = line[40:].strip()
-        files[filename] = (crc, perms)
+        e = Entry()
+
+        crc, size, mode, uid, gid, filename = [
+            line[x[0]:x[1]].strip() for x in histpairs]
+        
+        # Get CRC
+        if crc:
+            e.crc = crc
+
+        # Get size
+        if size:
+            e.size = int(size)
+
+        # Get mode
+        e.mode = int(mode, 8)
+
+        # Get uid and gid
+        if uid:
+            e.uid = int(uid)
+        if gid:
+            e.uid = int(uid)
+
+        # Get filename
+        e.filename = filename
+
+        files[filename] = e
+
     return files
 
 #-------------------------------------------------------------------------------
@@ -154,11 +190,10 @@ def filenames2archivenames( histfiles ):
     filenames in the archive file.
     """
     filenames = []
-    for fn, attrs in histfiles.iteritems():
-        crc, mode = attrs
+    for fn, e in histfiles.iteritems():
         if fn == '':
             fn = '.'
-        if stat.S_ISDIR(mode):
+        if stat.S_ISDIR(e.mode):
             fn += '/'
         filenames.append(fn)
     return filenames
@@ -228,23 +263,22 @@ def verify( histfiles, root ):
     errfmt = '  [ %-16s ]  %s'
 
     # Check that all the files in the history have been restored appropriately.
-    for relfn, attrs in histfiles.iteritems():
+    for relfn, e in histfiles.iteritems():
         # check existence
         fn = join(root, relfn)
 
         # Note: we use lexists() instead of exists() here, because symlink
         # targets may not exist.
-        if not lexists(fn): 
+        if not lexists(fn):
             print >> err, errfmt % ('missing-file', relfn)
             continue
 
-        crc, mode = attrs
-
         # Check mode.
-        if mode != getmode(fn):
+        if e.mode != getmode(fn):
             print >> err, errfmt % ('invalid-mode', relfn)
 
-        if crc is not None:
+        # Check CRC.
+        if e.crc is not None:
             if not islink(fn):
                 f = open(fn, 'r')
                 hexdigest = md5.new(f.read()).hexdigest()
@@ -255,10 +289,17 @@ def verify( histfiles, root ):
                 # Note: Calculate CRC from the target name of the symbolic link,
                 # not the contents of the file pointed to.
                 linktarget = os.readlink(fn)
-                hexdigest = md5.new(linktarget).hexdigest()             
+                hexdigest = md5.new(linktarget).hexdigest()
 
-            if crc != hexdigest:
+            if e.crc != hexdigest:
                 print >> err, errfmt % ('invalid-contents', relfn)
+
+        # Check size.
+        if e.size is not None:
+            restored_size = getsize(fn)
+            if restored_size != e.size:
+                print >> err, errfmt % ('invalid-size', relfn)
+
 
     # Check that no extra files have been extracted in the restored directory.
     # (This is not absolutely necessary but an extra precaution against internal
@@ -277,7 +318,7 @@ def verify( histfiles, root ):
                 dirs.remove(dn)
                 dirlinks.append(dn)
 
-        filesandlinks = files + dirlinks      
+        filesandlinks = files + dirlinks
         for fn in filesandlinks:
             resfiles.add(join(relroot, fn))
 

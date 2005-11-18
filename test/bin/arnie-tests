@@ -16,7 +16,7 @@ from subprocess import Popen, PIPE
 from pprint import pprint, pformat
 
 # get root of projects
-projdir = __file__
+projdir = abspath(__file__)
 while basename(projdir) != 'arnie':
     projdir = dirname(projdir)
 
@@ -362,12 +362,36 @@ class TestSimple(BaseTest):
 
 #-------------------------------------------------------------------------------
 #
+class TestDryRun(BaseTest):
+    """
+    Test that the dry-run does not change the source directory at all.
+    """
+    def test( self ):
+
+        # Copy original source as it was at the time of backup.
+        origdir = self.src + '.orig'
+        shutil.copytree(self.src, origdir)
+
+        archive(self.src, self.back, ['--dry-run'], expstatus=1)
+
+        errors = compare_dirs(self.src, origdir)
+
+    
+#-------------------------------------------------------------------------------
+#
 class TestVerbose(TestSimple):
     """
     Simple normal succesfull backup-restore test.
     """
     archopts = ['--verbose']
 
+#-------------------------------------------------------------------------------
+#
+class TestReallyVerbose(TestSimple):
+    """
+    Simple normal succesfull backup-restore test.
+    """
+    archopts = ['--verbose', '--verbose']
 
 
 #-------------------------------------------------------------------------------
@@ -989,11 +1013,32 @@ class TestPartial(BaseTest):
             check_one_up(fn, rest)
 
 
+#-------------------------------------------------------------------------------
+#
+class TestCrcThreshold0(TestSimple):
+    """
+    Test the CRC threshold options.
+    This disables the CRC calculation.
+    """
+    archopts = ['--crc-threshold=0']
 
+#-------------------------------------------------------------------------------
+#
+class TestCrcThresholdSome(TestSimple):
+    """
+    Test the CRC threshold options.
+    This should get about half the files.
+    """
+    archopts = ['--crc-threshold=4000']
 
-
-
-
+#-------------------------------------------------------------------------------
+#
+class TestCrcThresholdAbove(TestSimple):
+    """
+    Test the CRC threshold options.
+    This should use CRC on all the files, but optionally.
+    """
+    archopts = ['--crc-threshold=100000']
 
 
 
@@ -1038,7 +1083,7 @@ for symbol, obj in globals().copy().iteritems():
 
 simple = [ TestSimple ]
 
-current = [ TestVerbose ]
+current = [ TestReallyVerbose ]
 
 #-------------------------------------------------------------------------------
 #
@@ -1053,7 +1098,7 @@ def main():
 
     # get the specified test suite.
     if not args:
-        suitename = 'current'
+        suitename = 'all'
     else:
         suitename = args[0]
     try:
