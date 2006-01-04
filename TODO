@@ -106,3 +106,47 @@ Compressing Backups
 
 Existing archive files could be joined and compressed together at a new date,
 easily, by writing a new program which would be a variation on arnie-restore.
+
+
+
+
+
+User-submitted Feature Requests
+-------------------------------
+
+Exclude from file lists (Michal Panasiewicz wolvverine at tlen dot pl)::
+
+  add options --exclude-file-list /etc/backups/exclude
+
+  where
+
+  [root@serwer ]# cat /etc/backups/exclude
+  *.[Mm][Pp]3
+  *.[Mm][Pp]2
+  *.[Aa][Vv][Ii]
+  *.[Mm][Pp][Gg]
+  *.[Ww][Mm][Vv]
+  *.[Ww][Mm][Aa]
+  *.[Vv][Oo][Bb]
+  *.[Mm][Pp][Ee][Gg]
+  *.[Mm][Pp][Ee]
+  *.[Tt][Mm][Pp]
+  *.*~
+  *.*.rpmnew
+  *.[Bb][Aa][Kk]
+  *.[Oo][Ll][Dd]
+  *.[Ii][Ss][Oo]
+  */profile/[Cc]ookies/*
+  */[Tt]emporary [Ii]nternet [Ff]iles/*
+  */[Tt][Mm][Pp]/*
+  */[Tt][Ee][Mm][Pp]/*
+  */[Dd]ane aplikacji/[Mm]ozilla/[Pp]rofiles/*/*/[Cc]ache/*
+  */[Mm]ozilla/[Ff]irefox/[Pp]rofiles/*/[Cc]ache/*
+  *.[Mm][Dd][Ff]
+  *.[Mm][Dd][Ss]
+  *.[Nn][Rr][Gg]
+  *.[Cc][Aa][Bb]
+  *.[Ww][Aa][Vv]
+  */.[Kk][Oo][Ss][Zz]/*
+  #EOF
+
