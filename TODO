@@ -5,6 +5,8 @@
 Misc Ideas
 ----------
 
+- Include Tim Golden's Windows patch/idea (see email)
+
 - Add ctime, mtime, and a flags array to file info.
 
 - Print size of every file added to the backup.
