@@ -5,6 +5,8 @@
 Misc Ideas
 ----------
 
+- We need to include more empty files tests
+
 - Include Tim Golden's Windows patch/idea (see email)
 
 - Add ctime, mtime, and a flags array to file info.

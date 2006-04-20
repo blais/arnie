@@ -287,11 +287,21 @@ def create_history_file( alldirs, allfiles ):
     - allfiles: list of file entries to output.
     """
     f = StringIO.StringIO()
-    for filename, e in chain(alldirs, allfiles):
-        sizestr = e.size and str(e.size) or ''
+
+    def oneline( e ):
         print >> f, ('%32s %12s %06o %5s %5s %s' %
                      (e.crc or '', sizestr, e.mode,
                       e.uid or '', e.gid or '', e.filename))
+
+    # Note: for directories, we do not output the size.
+    for filename, e in alldirs:
+        sizestr = e.size and str(e.size) or ''
+        oneline(e)
+
+    for filename, e in allfiles:
+        sizestr = e.size and str(e.size) or '0'
+        oneline(e)
+
     return f.getvalue()
 
 

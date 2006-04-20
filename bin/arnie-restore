@@ -296,7 +296,12 @@ def verify( histfiles, root ):
 
         # Check size.
         if e.size is not None:
-            restored_size = getsize(fn)
+            if islink(fn):
+                # If the restored file is a symbolic link, do not deal with the
+                # size.
+                restored_size = 0
+            else:
+                restored_size = getsize(fn)
             if restored_size != e.size:
                 print >> err, errfmt % ('invalid-size', relfn)
 
