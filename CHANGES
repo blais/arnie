@@ -5,6 +5,10 @@
 Version 1.2: (minor features release)
 -------------------------------------
 
+- Fixed minor bugs (did not cause a loss of data) with symlinks and empty files
+  that were annoying, they were due to the file sizes and would cause empty
+  files to always be sent (that's in the 1.2 version).
+
 - Added more tests.
 
 - Added a dry-run option to the archive script.
