@@ -128,7 +128,7 @@ def getmode( fn ):
 
 #-------------------------------------------------------------------------------
 #
-def find_files( root, histfiles, excludes=[] ):
+def find_files( root, histfiles, excludes=None ):
     """
     Find the new files to be backed up.
 
@@ -145,6 +145,8 @@ def find_files( root, histfiles, excludes=[] ):
 
     The filenames returned are relative to the root directory.
     """
+    excludes = excludes or []
+
     def excludedp( fn ):
         "Return true if the filename is to be excluded."
         for exre in excludes:
