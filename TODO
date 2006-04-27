@@ -2,8 +2,48 @@
    TODO: arnie
 =================
 
+.. contents::
+..
+    1  Bugs
+    2  Misc Ideas
+    3  Slow Operation
+    4  Tracking new attributes and Storing attributes separately from contents
+    5  Testing for uid/gid changes
+    6  Compressing Backups
+    7  User-submitted Feature Requests
+
+
+Bugs
+====
+
+Problem with passwords and timeouts, fix this::
+
+  (Stephen Boulet <stephen@theboulets.net>)
+  On Apr 25, 2006, at 6:28 PM, Martin Blais wrote:
+
+  > Ah yeah, that's right, I'm checking first if you have permissions so
+  > we can abort right away instead of doing the backup for nothing.  This
+  > happens in exists_remote_dir().
+  >
+  > Okie, two possibilities:
+  >
+  > 1. How about if I gave you an option to not perform that check?, e.g.
+  > --no-check-remote
+  >
+  > 2. How about if I read the password in memory before starting
+  > (triggered on an option), figured out how to pass that to ssh and scp,
+  > and still did the check?
+  >
+  > Let me know which you prefer.  It's even better if you can send a
+  > patch, I'm really busy this week...
+  >
+  > cheers,
+  >
+
 Misc Ideas
-----------
+==========
+
+
 
 - We need to include more empty files tests
 
@@ -15,9 +55,8 @@ Misc Ideas
 
 - Support user/group file attributes (and change of).
 
-
 Slow Operation
---------------
+==============
 
 Implement alternate unpacking method, untarring files one on top of the
 other and removing unwanted files later.
@@ -36,7 +75,7 @@ other and removing unwanted files later.
 
 
 Tracking new attributes and Storing attributes separately from contents
------------------------------------------------------------------------
+=======================================================================
 
 Ideas from Harry Flink for desired features:
 
@@ -68,7 +107,7 @@ remain backwards compatible.
 cheers,
 
 Testing for uid/gid changes
----------------------------
+===========================
 
 Testing uid/gid's::
 
@@ -106,7 +145,7 @@ Testing uid/gid's::
 
 
 Compressing Backups
--------------------
+===================
 
 Existing archive files could be joined and compressed together at a new date,
 easily, by writing a new program which would be a variation on arnie-restore.
@@ -116,7 +155,7 @@ easily, by writing a new program which would be a variation on arnie-restore.
 
 
 User-submitted Feature Requests
--------------------------------
+===============================
 
 Exclude from file lists (Michal Panasiewicz wolvverine at tlen dot pl)::
 
