@@ -6,6 +6,7 @@
 ..
     1  Bugs
     2  Misc Ideas
+      2.1  Implement FTP Upload
     3  Slow Operation
     4  Tracking new attributes and Storing attributes separately from contents
     5  Testing for uid/gid changes
@@ -42,6 +43,33 @@ Problem with passwords and timeouts, fix this::
 
 Misc Ideas
 ==========
+
+Implement FTP Upload
+--------------------
+
+  On 4/27/06, Marc Valentin <mlgvalentin@gmail.com> wrote:
+  > Hi Martin,
+  > I just installed your backup software "Arnie".
+  > I managed to use it with gnupg but my internet hosting provider
+  > doesn't accept SSH so I cannot use your scp option. Is there a way to
+  > use ftp instead ? I searched a little bit on the internet but I don't
+  > see how I can get the backup file created by your script and send it
+  > by ftp.
+  > I know ftp is not secure but since the file is already encrypted with
+  > gnupg I don't think it is a problem.
+  > -marc-
+
+  Yes indeed, that could be an option easily added.
+  You can upload using FTP using one of the python stdlibs.
+  That should be an option added to arnie-archive.
+
+  I'm really busy for the next few weeks, so I won't be able to code
+  this, but I'll add it to the TODO file.  If you need this now and will
+  biuld it yourself, I'd be happy to integrate a patch.
+
+  cheers,
+
+
 
 
 
