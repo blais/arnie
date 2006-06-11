@@ -65,7 +65,7 @@ for d in (32, 12, 6, 5, 5, 1000):
     histpairs.append( (last, last+d) )
     last = last+d+1
 
-def read_history( histfile ):
+def read_history(histfile):
     """
     Read the history file.
     If the history file cannot be found, returns an empty list.
@@ -113,7 +113,7 @@ def read_history( histfile ):
 
 #-------------------------------------------------------------------------------
 #
-def getmode( fn ):
+def getmode(fn):
     """
     Stat that does not follow symlinks that just returns the mode.
     """
@@ -125,7 +125,7 @@ def getmode( fn ):
 
 #-------------------------------------------------------------------------------
 #
-def parse_datetime( dtstr ):
+def parse_datetime(dtstr):
     """
     Parse a user-provided date/time string.
 
@@ -169,7 +169,7 @@ def parse_datetime( dtstr ):
 
 #-------------------------------------------------------------------------------
 #
-def guess_compression( fn ):
+def guess_compression(fn):
     """
     Guess the compression of the file, using the filename extension.
     """
@@ -181,12 +181,12 @@ def guess_compression( fn ):
 
 #-------------------------------------------------------------------------------
 #
-def filenames2archivenames( histfiles ):
+def filenames2archivenames(histfiles):
     """
     Convert a history contents description into a list of filenames suitable for
     extraction from an archive.  Essentially, this means that directories end
     with a slash. Also, the root directory becomes ./.  This renaming is
-    necessary to to the GNU tar format or the way the tarfile module stores the
+    necessary to the GNU tar format or the way the tarfile module stores the
     filenames in the archive file.
     """
     filenames = []
@@ -195,12 +195,15 @@ def filenames2archivenames( histfiles ):
             fn = '.'
         if stat.S_ISDIR(e.mode):
             fn += '/'
+        # Note: a user submitted this patch for Windows:
+        # fn.replace('\\', '/')
+        # I have not yet been able to test it (don't have a Windows machine).
         filenames.append(fn)
     return filenames
 
 #-------------------------------------------------------------------------------
 #
-def restore( histfiles, archives, restoredir ):
+def restore(histfiles, archives, restoredir):
     """
     Restore the given fileset from the list of archives rooted at restoredir, in
     the order that they are presented in.
@@ -250,7 +253,7 @@ def restore( histfiles, archives, restoredir ):
 
 #-------------------------------------------------------------------------------
 #
-def verify( histfiles, root ):
+def verify(histfiles, root):
     """
     Verifies that the restored directory matches the filelist and attributes in
     the original backup.

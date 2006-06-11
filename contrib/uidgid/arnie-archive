@@ -52,7 +52,7 @@ history_fn = '.arniehistory'
 #
 dircrc_re = re.compile('^\s+$')
 
-def read_history( histfile ):
+def read_history(histfile):
     """
     Read the history file.
     If the history file cannot be found, returns an empty list.
@@ -98,7 +98,7 @@ def read_history( histfile ):
 
 #-------------------------------------------------------------------------------
 #
-def getmodeandowner( fn ):
+def getmodeandowner(fn):
     """
     Stat that does not follow symlinks that just returns the mode.
     """
@@ -111,7 +111,7 @@ def getmodeandowner( fn ):
 
 #-------------------------------------------------------------------------------
 #
-def find_files( root, histfiles, excludes=[] ):
+def find_files(root, histfiles, excludes=[]):
     """
     Find the new files to be backed up.
 
@@ -128,7 +128,7 @@ def find_files( root, histfiles, excludes=[] ):
 
     The filenames returned are relative to the root directory.
     """
-    def excludedp( fn ):
+    def excludedp(fn):
         "Return true if the filename is to be excluded."
         for exre in excludes:
             if exre.match(fn):
@@ -229,7 +229,7 @@ def find_files( root, histfiles, excludes=[] ):
 
 #-------------------------------------------------------------------------------
 #
-def create_history_file( alldirs, allfiles ):
+def create_history_file(alldirs, allfiles):
     """
     Overwrite the history file.
 
@@ -249,7 +249,7 @@ def create_history_file( alldirs, allfiles ):
 
 #-------------------------------------------------------------------------------
 #
-def backup_files( root, incrdirs, incrfiles, hist_contents, outfn ):
+def backup_files(root, incrdirs, incrfiles, hist_contents, outfn):
     """
     Backup the given list of files to the output archive.
 
@@ -285,7 +285,7 @@ def backup_files( root, incrdirs, incrfiles, hist_contents, outfn ):
 
 #-------------------------------------------------------------------------------
 #
-def exists_remote_dir( hostname, rdir ):
+def exists_remote_dir(hostname, rdir):
     """
     Checks if a remote directory exists. Returns True if it does.
 

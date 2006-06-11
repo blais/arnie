@@ -38,14 +38,14 @@ import shutil
 
 letset = string.ascii_lowercase + string.digits
 
-def gen_random_name( nlenmin=5, nlenmax=20 ):
+def gen_random_name(nlenmin=5, nlenmax=20):
     """
     Generates a random filename within the given number of characters.
     """
     return ''.join(random.sample(letset, random.randint(nlenmin, nlenmax)))
 
 
-def gen_text_data( dlenmin=100, dlenmax=10000 ):
+def gen_text_data(dlenmin=100, dlenmax=10000):
     """
     Generate random text data.
     """

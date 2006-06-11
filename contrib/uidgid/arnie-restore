@@ -50,7 +50,7 @@ history_fn = '.arniehistory'
 #
 dircrc_re = re.compile('^\s+$')
 
-def read_history( histfile ):
+def read_history(histfile):
     """
     Read the history file.
     If the history file cannot be found, returns an empty list.
@@ -95,7 +95,7 @@ def read_history( histfile ):
 
 #-------------------------------------------------------------------------------
 #
-def getmodeandowner( fn ):
+def getmodeandowner(fn):
     """
     Stat that does not follow symlinks that just returns the mode.
     """
@@ -107,7 +107,7 @@ def getmodeandowner( fn ):
 
 #-------------------------------------------------------------------------------
 #
-def parse_datetime( dtstr ):
+def parse_datetime(dtstr):
     """
     Parse a user-provided date/time string.
 
@@ -151,7 +151,7 @@ def parse_datetime( dtstr ):
 
 #-------------------------------------------------------------------------------
 #
-def guess_compression( fn ):
+def guess_compression(fn):
     """
     Guess the compression of the file, using the filename extension.
     """
@@ -163,7 +163,7 @@ def guess_compression( fn ):
 
 #-------------------------------------------------------------------------------
 #
-def filenames2archivenames( histfiles ):
+def filenames2archivenames(histfiles):
     """
     Convert a history contents description into a list of filenames suitable for
     extraction from an archive.  Essentially, this means that directories end
@@ -183,7 +183,7 @@ def filenames2archivenames( histfiles ):
 
 #-------------------------------------------------------------------------------
 #
-def restore( histfiles, archives, restoredir ):
+def restore(histfiles, archives, restoredir):
     """
     Restore the given fileset from the list of archives rooted at restoredir, in
     the order that they are presented in.
@@ -233,7 +233,7 @@ def restore( histfiles, archives, restoredir ):
 
 #-------------------------------------------------------------------------------
 #
-def verify( histfiles, root ):
+def verify(histfiles, root):
     """
     Verifies that the restored directory matches the filelist and attributes in
     the original backup.

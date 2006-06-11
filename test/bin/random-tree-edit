@@ -22,7 +22,7 @@ from os.path import *
 
 letset = string.ascii_lowercase + string.digits
 
-def gen_random_name( nlenmin=5, nlenmax=10 ):
+def gen_random_name(nlenmin=5, nlenmax=10):
     """
     Generates a random filename within the given number of characters.
     """

@@ -33,7 +33,7 @@ from os.path import *
 history_fn = '.arniehistory'
 
 
-def read_history( histfile ):
+def read_history(histfile):
     """
     Read the history file.
     If the history file cannot be found, returns an empty list.
@@ -53,7 +53,7 @@ def read_history( histfile ):
     return files
 
 
-def guess_compression( fn ):
+def guess_compression(fn):
     """
     Guess the compression of the file, using the filename extension.
     """

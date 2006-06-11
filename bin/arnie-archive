@@ -67,7 +67,7 @@ for d in (32, 12, 6, 5, 5, 1000):
     histpairs.append( (last, last+d) )
     last = last+d+1
 
-def read_history( histfile ):
+def read_history(histfile):
     """
     Read the history file.
     If the history file cannot be found, returns an empty list.
@@ -115,7 +115,7 @@ def read_history( histfile ):
 
 #-------------------------------------------------------------------------------
 #
-def getmode( fn ):
+def getmode(fn):
     """
     Stat that does not follow symlinks that just returns the mode.
     """
@@ -128,7 +128,7 @@ def getmode( fn ):
 
 #-------------------------------------------------------------------------------
 #
-def find_files( root, histfiles, excludes=None ):
+def find_files(root, histfiles, excludes=None):
     """
     Find the new files to be backed up.
 
@@ -147,7 +147,7 @@ def find_files( root, histfiles, excludes=None ):
     """
     excludes = excludes or []
 
-    def excludedp( fn ):
+    def excludedp(fn):
         "Return true if the filename is to be excluded."
         for exre in excludes:
             if exre.match(fn):
@@ -280,7 +280,7 @@ def find_files( root, histfiles, excludes=None ):
 
 #-------------------------------------------------------------------------------
 #
-def create_history_file( alldirs, allfiles ):
+def create_history_file(alldirs, allfiles):
     """
     Overwrite the history file.
 
@@ -290,7 +290,7 @@ def create_history_file( alldirs, allfiles ):
     """
     f = StringIO.StringIO()
 
-    def oneline( e ):
+    def oneline(e):
         print >> f, ('%32s %12s %06o %5s %5s %s' %
                      (e.crc or '', sizestr, e.mode,
                       e.uid or '', e.gid or '', e.filename))
@@ -309,7 +309,7 @@ def create_history_file( alldirs, allfiles ):
 
 #-------------------------------------------------------------------------------
 #
-def backup_files( root, incrdirs, incrfiles, hist_contents, outfn ):
+def backup_files(root, incrdirs, incrfiles, hist_contents, outfn):
     """
     Backup the given list of files to the output archive.
 
@@ -345,7 +345,7 @@ def backup_files( root, incrdirs, incrfiles, hist_contents, outfn ):
 
 #-------------------------------------------------------------------------------
 #
-def exists_remote_dir( hostname, rdir ):
+def exists_remote_dir(hostname, rdir):
     """
     Checks if a remote directory exists. Returns True if it does.
 

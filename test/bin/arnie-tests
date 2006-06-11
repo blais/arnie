@@ -29,7 +29,7 @@ history_fn = '.arniehistory'
 
 #-------------------------------------------------------------------------------
 #
-def print_header( s ):
+def print_header(s):
     """
     Prints some separator header.
     """
@@ -37,7 +37,7 @@ def print_header( s ):
 
 #-------------------------------------------------------------------------------
 #
-def prepare_dir( root ):
+def prepare_dir(root):
     """
     Prepare the source directory before running the tests.
     """
@@ -47,7 +47,7 @@ def prepare_dir( root ):
 
 #-------------------------------------------------------------------------------
 #
-def rmrf( fnodn ):
+def rmrf(fnodn):
     """
     Delete the given directory and all its contents.
     """
@@ -71,7 +71,7 @@ def rmrf( fnodn ):
 
 #-------------------------------------------------------------------------------
 #
-def random_dir( aroot ):
+def random_dir(aroot):
     """
     Walk the tree of subdirectories under the given root and return a random
     directory.
@@ -84,7 +84,7 @@ def random_dir( aroot ):
 
 #-------------------------------------------------------------------------------
 #
-def random_file( aroot ):
+def random_file(aroot):
     """
     Walk the tree of subdirectories under the given root and return a random
     file.
@@ -96,7 +96,7 @@ def random_file( aroot ):
 
 #-------------------------------------------------------------------------------
 #
-def new_filename( root ):
+def new_filename(root):
     """
     Find some new random original filename that does not already exist in the
     given directory.  This returns the absolute filename.
@@ -109,7 +109,7 @@ def new_filename( root ):
 
 #-------------------------------------------------------------------------------
 #
-def create_small_file( fn ):
+def create_small_file(fn):
     """
     Create some small file with little random contents.
     """
@@ -122,7 +122,7 @@ def create_small_file( fn ):
 
 #-------------------------------------------------------------------------------
 #
-def runprint( cmd ):
+def runprint(cmd):
     """
     Run a command, wait, print its results, make sure that it returns 0.
 
@@ -138,7 +138,7 @@ def runprint( cmd ):
 
 #-------------------------------------------------------------------------------
 #
-def source_populate( root, nfiles=30 ):
+def source_populate(root, nfiles=30):
     """
     Create a new directory and populate it with some random content.
 
@@ -151,7 +151,7 @@ def source_populate( root, nfiles=30 ):
 
 #-------------------------------------------------------------------------------
 #
-def source_edit( root ):
+def source_edit(root):
     """
     Randomly edit a hierarchy of files.
 
@@ -169,7 +169,7 @@ perms = [stat.S_ISUID, stat.S_ISGID, stat.S_ENFMT, stat.S_ISVTX, stat.S_IREAD,
          stat.S_IXUSR, stat.S_IRWXG, stat.S_IRGRP, stat.S_IWGRP, stat.S_IXGRP,
          stat.S_IRWXO, stat.S_IROTH, stat.S_IWOTH, stat.S_IXOTH]
 
-def set_random_permissions( root, prob=0.4 ):
+def set_random_permissions(root, prob=0.4):
     """
     Randomly change the permissions of many files under the specified directory.
 
@@ -189,7 +189,7 @@ def set_random_permissions( root, prob=0.4 ):
 
 #-------------------------------------------------------------------------------
 #
-def archive( root, backupdir, options=[], expstatus=0 ):
+def archive(root, backupdir, options=[], expstatus=0):
     """
     Run the archiver on the given root directory.
     """
@@ -205,7 +205,7 @@ def archive( root, backupdir, options=[], expstatus=0 ):
 
 #-------------------------------------------------------------------------------
 #
-def restore( backupdir, restoredir, reslist=[], options=[] ):
+def restore(backupdir, restoredir, reslist=[], options=[]):
     """
     Run the archiver on the given root directory.
     """
@@ -217,7 +217,7 @@ def restore( backupdir, restoredir, reslist=[], options=[] ):
 
 #-------------------------------------------------------------------------------
 #
-def compare_dirs( dir1, dir2, ignore_files=[] ):
+def compare_dirs(dir1, dir2, ignore_files=[]):
     """
     Compare the contents of two directories recursively for differences.
 
@@ -229,7 +229,7 @@ def compare_dirs( dir1, dir2, ignore_files=[] ):
     dircomp = filecmp.dircmp(dir1, dir2)
     err = StringIO.StringIO()
 
-    def report( self ):
+    def report(self):
         for ign in ignore_files:
             for l in (self.left_only, self.right_only, self.diff_files,
                       self.funny_files, self.common_funny):
@@ -292,14 +292,14 @@ class BaseTest(unittest.TestCase):
     This takes care of generating a directory with random stuffs in it and
     contains some utility functions.
     """
-    def __init__( self ):
+    def __init__(self):
         unittest.TestCase.__init__(self, 'test')
         self.src, self.back, self.rest = self.setup()
 
-    def getroot( self ):
+    def getroot(self):
         return join(testroot, self.__class__.__name__)
 
-    def setup( self ):
+    def setup(self):
         """
         Prepare and generate a source directory and a backup location and return
         these as a pair.
@@ -317,10 +317,10 @@ class BaseTest(unittest.TestCase):
 
         return sourcedir, backupdir, restoredir
 
-    def test( self ):
+    def test(self):
         raise NotImplementedError
 
-    def restore_and_compare( self, expected_retcode=0, restfn=None ):
+    def restore_and_compare(self, expected_retcode=0, restfn=None):
         # restore the latest
         if restfn is None:
             restfn = self.rest
@@ -344,7 +344,7 @@ class TestSimple(BaseTest):
     """
     archopts = []
 
-    def test( self ):
+    def test(self):
         # set some funky permissions to check if they are maintained
         # (the comparison at the end detects different permissions)
         set_random_permissions(self.src)
@@ -366,7 +366,7 @@ class TestDryRun(BaseTest):
     """
     Test that the dry-run does not change the source directory at all.
     """
-    def test( self ):
+    def test(self):
 
         # Copy original source as it was at the time of backup.
         origdir = self.src + '.orig'
@@ -400,7 +400,7 @@ class TestAltHistory(TestSimple):
     """
     Test with history file in an alternate user-specified location.
     """
-    def __init__( self ):
+    def __init__(self):
         TestSimple.__init__(self)
 
         # Add an option to the archive to test with an history file in an
@@ -414,7 +414,7 @@ class TestMultiFull(BaseTest):
     """
     Test multiple full backups by using the appropriate option to archive.
     """
-    def test( self ):
+    def test(self):
         # a few iterations of archive/edit
         archive(self.src, self.back)
         source_edit(self.src)
@@ -439,14 +439,14 @@ class TestMultiFull(BaseTest):
 
         self.restore_and_compare()
 
-    def full_archive( self ):
+    def full_archive(self):
         archive(self.src, self.back, ['--full'])
 
 class TestMultiFull1(TestMultiFull):
     """
     Multiple full backups by deleting the history file.
     """
-    def full_archive( self ):
+    def full_archive(self):
         os.remove(join(self.src, history_fn))
         archive(self.src, self.back)
 
@@ -459,7 +459,7 @@ class TestMissing(BaseTest):
     a sequence.
     """
 
-    def test( self ):
+    def test(self):
         # a few iterations of archive/edit
         archives = []
         for x in xrange(5):
@@ -481,7 +481,7 @@ class TestCompression(BaseTest):
     """
     Test various compression schemes.
     """
-    def test( self ):
+    def test(self):
         # archive without compression
         archive(self.src, self.back)
         retcode = restore(self.back, self.rest)
@@ -511,7 +511,7 @@ class TestNoRoot(BaseTest):
     """
     host = None
 
-    def test( self ):
+    def test(self):
         archive('/bsbsbs', self.back, expstatus=1)
 
 class TestNoLocalArchDir(BaseTest):
@@ -520,7 +520,7 @@ class TestNoLocalArchDir(BaseTest):
     """
     host = None
 
-    def test( self ):
+    def test(self):
         os.rmdir(self.back)
         if self.host:
             self.back = '%s:%s' % (self.host, self.back)
@@ -538,7 +538,7 @@ class TestEmptyUpdate(BaseTest):
     """
     Test with an update that does not contain any changes.
     """
-    def test( self ):
+    def test(self):
         # first backup
         archive(self.src, self.back)
 
@@ -556,7 +556,7 @@ class TestNoEmpty(BaseTest):
     """
     Test skipping empty backups.
     """
-    def test( self ):
+    def test(self):
         archive(self.src, self.back)
 
         # Backup with empty skip options.
@@ -582,7 +582,7 @@ class TestChmodOnly(BaseTest):
     """
     Test with chmod only.
     """
-    def test( self ):
+    def test(self):
         # first backup
         archive(self.src, self.back)
 
@@ -601,7 +601,7 @@ class TestAddDir(BaseTest):
     """
     Test just adding a single (empty) directory.
     """
-    def test( self ):
+    def test(self):
         archive(self.src, self.back)
 
         # create a single new directory
@@ -623,7 +623,7 @@ class TestRestoreDir(BaseTest):
     """
     Test restoring to a directory that already exists.
     """
-    def test( self ):
+    def test(self):
         archive(self.src, self.back)
 
         os.mkdir(self.rest)
@@ -639,7 +639,7 @@ class TestArchivePrefix(BaseTest):
     """
     Test the archive prefixes.
     """
-    def test( self ):
+    def test(self):
         archive(self.src, self.back, ['--prefix', 'myarchive'])
         archive(self.src, self.back, ['--prefix', 'myarchive'])
         archive(self.src, self.back, ['--prefix', 'myarchive'])
@@ -653,12 +653,12 @@ class TestRemote(BaseTest):
     """
     Test archive to a local directory which does not exist.
     """
-    def __init__( self ):
+    def __init__(self):
         BaseTest.__init__(self)
         self.localback = self.back
         self.back = 'localhost:' + self.back
 
-    def test( self ):
+    def test(self):
         # a few iterations of archive/edit
         archive(self.src, self.back)
         source_edit(self.src)
@@ -673,7 +673,7 @@ class TestEncrypted(BaseTest):
     """
     Test encrypted archives.
     """
-    def test( self ):
+    def test(self):
         afn, status = archive(self.src, self.back, ['--encrypt=%s' % encrypt_key])
         assert afn.endswith('.gpg')
 
@@ -681,7 +681,7 @@ class TestEncryptedBadKey(BaseTest):
     """
     Test encrypting with a bad key.
     """
-    def test( self ):
+    def test(self):
         archive(self.src, self.back, ['--encrypt=UHuhsdhdsuhdsuh'], expstatus=1)
         print '(Errors were expected.)'
 
@@ -691,7 +691,7 @@ class TestFilenamesWithSpaces(BaseTest):
     """
     Test archives with filenames with spaces and/or funny characters in them.
     """
-    def test( self ):
+    def test(self):
         nfn = join(random_dir(self.src), "I have Spaces")
         print 'Filename with spaces:', nfn
         create_small_file(nfn)
@@ -707,7 +707,7 @@ class TestSimulatedTime(BaseTest):
     Test archives with simulated time used for further dated tests.
     (In other words, test the test option before we rely on it for our tests.)
     """
-    def test( self ):
+    def test(self):
         tomorrow = datetime.datetime.now() + datetime.timedelta(days=1)
         timestr = tomorrow.strftime('%Y-%m-%d.%H%M%S00')
         tomorrow = time.mktime(tomorrow.timetuple())
@@ -721,7 +721,7 @@ class TestDated(BaseTest):
     """
     Test archives with specific restore date.
     """
-    def test( self ):
+    def test(self):
 
         # Create various backups and take snapshots at each point.
         packs = []
@@ -791,7 +791,7 @@ class TestExcludes(BaseTest):
     """
     Test with exclusions.
     """
-    def test( self ):
+    def test(self):
         # Test with an invalid regular expression pattern
         archive(self.src, self.back, ['--exclude=*bli.*'], expstatus=1)
 
@@ -836,7 +836,7 @@ class TestSymLink(BaseTest):
     """
     Test with symbolic links.
     """
-    def test( self ):
+    def test(self):
         # Create some symbolic link.
         fn = random_file(self.src)
 
@@ -913,7 +913,7 @@ class TestSymLinkDir(BaseTest):
     """
     Test with symbolic links to directories.
     """
-    def test( self ):
+    def test(self):
         # Create some symbolic link.
         lfn = new_filename(self.src)
         dn = random_dir(self.src)[len(self.src)+1:]
@@ -974,7 +974,7 @@ class TestRootPerms(BaseTest):
     """
     Test root permissions not being restored.
     """
-    def test( self ):
+    def test(self):
         # Set the root permissions to something different than the umask
         os.chmod(self.src, 0731)
 
@@ -988,10 +988,10 @@ class TestPartial(BaseTest):
     """
     Test root permissions not being restored.
     """
-    def test( self ):
+    def test(self):
         archive(self.src, self.back)
 
-        def check_one_up( dn, root ):
+        def check_one_up(dn, root):
             """
             Check that from dn to root, there is always a single directory
             entry.
@@ -1056,7 +1056,7 @@ class TestCrcThresholdAbove(TestSimple):
 ##     """
 ##     Test that someone else will add... (UPDATE DESCRIPTION)
 ##     """
-##     def test( self ):
+##     def test(self):
 ##         # At this point you have a valid source directory in self.src, and a
 ##         # backup and restore location under self.back and self.rest.  The root
 ##         # for all files for your test is under self.root.
