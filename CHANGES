@@ -2,6 +2,12 @@
     CHANGES: arnie
 ======================
 
+Current
+-------
+
+- Added patch from Steve Scully <sscully314 at yahoo dot com> for Windows
+  archive names.
+
 Version 1.2: (minor features release)
 -------------------------------------
 

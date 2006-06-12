@@ -195,9 +195,8 @@ def filenames2archivenames(histfiles):
             fn = '.'
         if stat.S_ISDIR(e.mode):
             fn += '/'
-        # Note: a user submitted this patch for Windows:
-        # fn.replace('\\', '/')
-        # I have not yet been able to test it (don't have a Windows machine).
+
+        fn.replace('\\', '/')
         filenames.append(fn)
     return filenames
 
