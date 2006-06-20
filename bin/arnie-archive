@@ -88,7 +88,7 @@ def read_history(histfile):
 
         crc, size, mode, uid, gid, filename = [
             line[x[0]:x[1]].strip() for x in histpairs]
-        
+
         # Get CRC
         if crc:
             e.crc = crc
@@ -231,7 +231,7 @@ def find_files(root, histfiles, excludes=None):
                 if (opts.crc_threshold is None or
                     filesize < opts.crc_threshold):
 
-                    f = open(fn, 'r')
+                    f = open(fn, 'rb')
                     hexdigest = md5.new(f.read()).hexdigest()
                     f.close()
                 else:
@@ -363,7 +363,11 @@ def exists_remote_dir(hostname, rdir):
 
     """
     cmd = ['ssh', hostname, 'test', '-d', rdir]
-    p = Popen(cmd, stdout=PIPE, stderr=PIPE)
+    try:
+        p = Popen(cmd, stdout=PIPE, stderr=PIPE)
+    except (OSError, IOError), e:
+        raise SystemExit("Error: ssh failed -- do you have ssh?\n%s" % e)
+
     sout, serr = p.communicate()
     if p.returncode != 0:
         if sout or serr:
@@ -442,7 +446,12 @@ def main():
         archdir = args[1]
         remote_re = re.compile('((?:[\w.]+@)?[\w.]+):(.+)')
         mo = remote_re.match(archdir)
-        if mo:
+
+        # Note: we limit the hostname to have more than one char, in order to
+        # allow Window drives as destination paths.  If you do use one-letter
+        # UNIX hostnames, you probably need psychiatric help, not help with your
+        # backups.
+        if mo and len(mo.group(1)) > 1:
             remote_host, remote_dir = mo.group(1, 2)
             archdir = tempfile.gettempdir() # put the archive there temporarily
     else:
@@ -536,9 +545,13 @@ def main():
                 print '=== Encrypting archive'
 
             encfn = '%s.gpg' % outfn
-            p = Popen(['gpg', '--encrypt', '--recipient=%s' % opts.encrypt,
-                       '--output=%s' % encfn, outfn],
-                      stdout=PIPE, stderr=PIPE)
+            try:
+                p = Popen(['gpg', '--encrypt', '--recipient=%s' % opts.encrypt,
+                           '--output=%s' % encfn, outfn],
+                          stdout=PIPE, stderr=PIPE)
+            except (OSError, IOError), e:
+                raise SystemExit(
+                    "Error: gpg failed -- do you have gpg?\n%s" % e)
             sout, serr = p.communicate()
             if p.returncode == 0:
                 os.remove(outfn)
@@ -558,8 +571,13 @@ def main():
                 print "=== Sending archive to remote host '%s' in dir '%s'" % \
                       (remote_host, remote_dir)
 
-            p = Popen(['scp', outfn, '%s:%s' % (remote_host, remote_dir)],
-                      stdout=PIPE, stderr=PIPE)
+            try:
+                p = Popen(['scp', outfn, '%s:%s' % (remote_host, remote_dir)],
+                          stdout=PIPE, stderr=PIPE)
+            except (OSError, IOError), e:
+                raise SystemExit(
+                    "Error: scp failed -- do you have scp?\n%s" % e)
+
             sout, serr = p.communicate()
             if p.returncode != 0:
                 raise SystemExit(

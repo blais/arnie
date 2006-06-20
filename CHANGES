@@ -5,6 +5,15 @@
 Current
 -------
 
+- Applied more fixes from Steve Scully (thanks!):
+
+  * Remote hosts are now limited to more than one characters.  This allows
+    Windows paths that include a drive-letter to be used as a destination path.
+
+  * Compare the files in binary mode.  Using text-mode on binary files may
+    result in incomplete comparisons due to the presence of an EOF character in
+    the stream.
+
 - Added patch from Steve Scully <sscully314 at yahoo dot com> for Windows
   archive names.
 
