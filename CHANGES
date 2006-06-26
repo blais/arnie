@@ -5,7 +5,9 @@
 Current
 -------
 
-- Applied more fixes from Steve Scully (thanks!):
+- Applied bug fixes for Windows and binary files from Steve Scully.
+
+- Applied more fixes from Steve Scully:
 
   * Remote hosts are now limited to more than one characters.  This allows
     Windows paths that include a drive-letter to be used as a destination path.

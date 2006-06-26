@@ -196,7 +196,7 @@ def filenames2archivenames(histfiles):
         if stat.S_ISDIR(e.mode):
             fn += '/'
 
-        fn.replace('\\', '/')
+        fn = fn.replace('\\', '/')
         filenames.append(fn)
     return filenames
 
@@ -282,7 +282,7 @@ def verify(histfiles, root):
         # Check CRC.
         if e.crc is not None:
             if not islink(fn):
-                f = open(fn, 'r')
+                f = open(fn, 'rb')
                 hexdigest = md5.new(f.read()).hexdigest()
                 f.close()
             else:
