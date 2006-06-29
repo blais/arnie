@@ -56,9 +56,15 @@ def main():
     # gather all dirs and files
     adirs, afiles = [], []
     for dn in args:
+        ddirs, dfiles = [], []
         for root, dirs, files in os.walk(dn):
-            adirs.append(root)
-            afiles.extend( [join(root, x) for x in files] )
+            ddirs.append(root)
+            dfiles.extend( [join(root, x) for x in files] )
+        if not ddirs and not dfiles:
+            raise SystemExit(
+                'Error: No files nor directories in directory: %s' % dn)
+        adirs += ddirs
+        afiles += dfiles
 
     # remove files to ignore from the files of files
     for ignfn in opts.ignore:

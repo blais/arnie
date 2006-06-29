@@ -5,12 +5,17 @@
 This is a list of contributors to the arnie backups project.
 
 
-n: Martin Blais
-e: blais at furius dot ca
-d: Main author, wrote, designed and tested 1.0.
+:n: Martin Blais
+:e: blais at furius dot ca
+:d: Main author, wrote, designed and tested 1.0.
 
 
-n: Harry Flink
-e: harppa at steo dot fi
-d: Submitted patch for symlinks.
+:n: Harry Flink
+:e: harppa at steo dot fi
+:d: Submitted patch for symlinks.
+
+
+:n: Steve Scully
+:e: sscully314 at yahoo dot com
+:d: Submitted multiple patches for support under Windows.
 
