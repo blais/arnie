@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*-
 #
-# $Id$
+# $Id: arnie-tests,v 1.2 2006/06/29 03:13:18 Administrator Exp $
 #
 
 """
@@ -9,23 +9,40 @@ Arnie automated test suite.
 """
 
 # stdlib imports
-import os, unittest, StringIO, filecmp, stat, random, shutil
+import sys, os, unittest, StringIO, filecmp, stat, random, shutil, tempfile
 import tarfile, string, types, time, datetime
 from os.path import *
 from subprocess import Popen, PIPE
 from pprint import pprint, pformat
 
-# get root of projects
-projdir = abspath(__file__)
-while basename(projdir) != 'arnie':
-    projdir = dirname(projdir)
 
-# specify test root temporary directory
-testroot = '/tmp/arnie'
+#-------------------------------------------------------------------------------
+#
+testroot = join(tempfile.gettempdir(), 'arnie')
 
 encrypt_key = 'D1775F1D'
 
 history_fn = '.arniehistory'
+
+def is_running_windows():
+    return sys.platform == 'win32'
+
+# specify test root temporary directory and System dependant items
+if is_running_windows():
+    projdir = 'D:\\projects\\software\\arnie'
+    sys_has_ssh = False  
+    sys_has_gpg_encryption = False
+    sys_has_symlinks = False
+else:                        
+    projdir = abspath(__file__)
+    sys_has_ssh = True  
+    sys_has_gpg_encryption = True
+    sys_has_symlinks = True
+    
+while basename(projdir) != 'arnie':
+    projdir = dirname(projdir)
+
+
 
 #-------------------------------------------------------------------------------
 #
@@ -130,7 +147,17 @@ def runprint(cmd):
     - cmd: the command to be runned -> list of strings
     """
     print '[ cmd:', ' '.join(cmd), ']'
-    p = Popen(cmd, stdout=PIPE, stderr=PIPE)
+
+    if is_running_windows():
+        executable = 'python.exe'
+    else:
+        executable = 'python'
+
+    try:
+        p = Popen([executable] + cmd, stdout=PIPE, stderr=PIPE)
+    except OSError:
+        raise SystemExit("You need to place python.exe in your execution PATH.")
+
     sout, serr = p.communicate()
     print sout
     print serr
@@ -147,7 +174,8 @@ def source_populate(root, nfiles=30):
     - nfiles: the number of files to create
     """
     print_header('Populating %s' % root)
-    runprint(['random-tree-gen', '--verbose', '--nb-files=%d' % nfiles, root])
+    runprint(['bin/random-tree-gen', '--verbose',
+              '--nb-files=%d' % nfiles, root])
 
 #-------------------------------------------------------------------------------
 #
@@ -159,7 +187,7 @@ def source_edit(root):
     - root: the root of the files to randomly edit.
     """
     print_header('Editing %s' % root)
-    runprint(['random-tree-edit', '-I', join(root, '.arniehistory'), root])
+    runprint(['bin/random-tree-edit', '-I', join(root, '.arniehistory'), root])
 
 
 #-------------------------------------------------------------------------------
@@ -660,6 +688,10 @@ class TestRemote(BaseTest):
 
     def test(self):
         # a few iterations of archive/edit
+        if(sys_has_ssh == False): #windows usually doesn't have ssh
+            print('Skipping the remote tests -- configuration option excludes remote tests')
+            return 
+        
         archive(self.src, self.back)
         source_edit(self.src)
 
@@ -674,6 +706,10 @@ class TestEncrypted(BaseTest):
     Test encrypted archives.
     """
     def test(self):
+        if(sys_has_gpg_encryption  == False):
+            print 'Skipping encryption test -- configuration option excludes encryption tests'
+            return
+        
         afn, status = archive(self.src, self.back, ['--encrypt=%s' % encrypt_key])
         assert afn.endswith('.gpg')
 
@@ -682,6 +718,9 @@ class TestEncryptedBadKey(BaseTest):
     Test encrypting with a bad key.
     """
     def test(self):
+        if(sys_has_gpg_encryption  == False):
+            print 'Skipping bad key encryption test -- configuration option excludes encryption tests'
+            return        
         archive(self.src, self.back, ['--encrypt=UHuhsdhdsuhdsuh'], expstatus=1)
         print '(Errors were expected.)'
 
@@ -913,7 +952,7 @@ class TestSymLinkDir(BaseTest):
     """
     Test with symbolic links to directories.
     """
-    def test(self):
+    def test(self):        
         # Create some symbolic link.
         lfn = new_filename(self.src)
         dn = random_dir(self.src)[len(self.src)+1:]
@@ -1081,9 +1120,18 @@ for symbol, obj in globals().copy().iteritems():
            symbol.startswith('Test'):
         all.append(obj)
 
+# Remove symlink tests under platforms which do not support them.
+if (sys_has_symlinks == False):
+    all.remove(TestSymLink)
+    all.remove(TestSymLinkDir)
+
+
 simple = [ TestSimple ]
 
 current = [ TestReallyVerbose ]
+
+# get root of projects
+
 
 #-------------------------------------------------------------------------------
 #
@@ -1095,6 +1143,7 @@ def main():
     import optparse
     parser = optparse.OptionParser(__doc__.strip())
     opts, args = parser.parse_args()
+
 
     # get the specified test suite.
     if not args:
