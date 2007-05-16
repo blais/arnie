@@ -3,6 +3,24 @@
 =====================================
 
 .. contents::
+..
+    1   Description
+      1.1  Context
+      1.2  Basic Functioning and Features
+        1.2.1  Features
+        1.2.2  Caution
+    2   Documentation
+    3   Download
+    4   Installation and Packaging
+    5   Testing
+    6   Reporting Bugs
+    7   Installation
+      7.1  Dependencies
+      7.2  Portability
+    8   External Links
+      8.1  Other Projects
+    9   Copyright, License and Disclaimer
+    10  Author
 
 Description
 ===========
@@ -203,6 +221,14 @@ External Links
 - `Official Homepage <http://furius.ca/arnie>`_
 - `Freshmeat Application Index <http://freshmeat.net/projects/arnie>`_
 - `Author's Homepage <http://furius.ca>`_
+
+Other Projects
+--------------
+
+`Duplicity <http://duplicity.nongnu.org/>`_ is enjoying a recent
+revival (2006-2007).  It uses librsync, so it is more efficient than
+what arnie is doing (it needs not send entire files over to the remote
+network).
 
 
 Copyright, License and Disclaimer

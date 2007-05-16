@@ -3,7 +3,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-<meta name="generator" content="Docutils 0.3.10: http://docutils.sourceforge.net/" />
+<meta name="generator" content="Docutils 0.5: http://docutils.sourceforge.net/" />
 <title>Arnie Simple Incremental Backups System</title>
 <meta name="author" content="Martin Blais &lt;blais&#64;furius.ca&gt;" />
 <meta name="date" content="2005-07-23" />
@@ -23,19 +23,19 @@
 <col class="docinfo-content" />
 <tbody valign="top">
 <tr><th class="docinfo-name">Author:</th>
-<td>Martin Blais &lt;<a class="reference" href="mailto:blais&#64;furius.ca">blais&#64;furius.ca</a>&gt;</td></tr>
+<td>Martin Blais &lt;<a class="reference external" href="mailto:blais&#64;furius.ca">blais&#64;furius.ca</a>&gt;</td></tr>
 <tr><th class="docinfo-name">Date:</th>
 <td>2005-07-23</td></tr>
 </tbody>
 </table>
 <div class="abstract topic">
 <p class="topic-title first">Abstract</p>
-<p>A solution for my offsite backups solution. 
+<p>A solution for my offsite backups solution.
 This is an internal design document and may not be up-to-date.
 These are just notes I took in the process of implementing that project.</p>
 </div>
-<div class="section">
-<h1><a id="forces" name="forces">Forces</a></h1>
+<div class="section" id="forces">
+<h1>Forces</h1>
 <p>We want:</p>
 <ul class="simple">
 <li>Networked backup: the size of backup data must be kept somewhat low;</li>
@@ -54,8 +54,8 @@ backup solutions which are buggy and not tested.  They don't understand that
 untested backups are no better than no backups at all.</li>
 </ul>
 </div>
-<div class="section">
-<h1><a id="solution" name="solution">Solution</a></h1>
+<div class="section" id="solution">
+<h1>Solution</h1>
 <p>Some definitions:</p>
 <blockquote>
 <dl class="docutils">
@@ -65,10 +65,10 @@ untested backups are no better than no backups at all.</li>
 <dd>The machine where backed up data archives are to be sent.</dd>
 </dl>
 </blockquote>
-<div class="section">
-<h2><a id="the-algorithms" name="the-algorithms">The algorithms</a></h2>
-<div class="section">
-<h3><a id="backup" name="backup">Backup</a></h3>
+<div class="section" id="the-algorithms">
+<h2>The algorithms</h2>
+<div class="section" id="backup">
+<h3>Backup</h3>
 <p>A file with the lists of files that were last backed up, including a CRC for
 each file (e.g. an MD5 sum) is kept and maintained on the client.  If the file
 is not available, a full backup should be run.</p>
@@ -89,8 +89,8 @@ date/time, and sent to the server, to be put in a directory along with the
 other archives;</li>
 </ol>
 </div>
-<div class="section">
-<h3><a id="restore" name="restore">Restore</a></h3>
+<div class="section" id="restore">
+<h3>Restore</h3>
 <p>We assume that we have a list of backup archives, whose union contain at least
 one copy of the files in file list stored in a backup archive.</p>
 <ol class="arabic simple">
@@ -113,8 +113,8 @@ other and then to remove the files that are not supposed to be present.  This
 might actually be faster than the lookup I was planning to do.</p>
 </div>
 </div>
-<div class="section">
-<h2><a id="about-dates" name="about-dates">About Dates</a></h2>
+<div class="section" id="about-dates">
+<h2>About Dates</h2>
 <p>There are two options for the restore algorithm to sort the files by date:</p>
 <ol class="arabic simple">
 <li>The filenames are assumed to contain the date/time embedded in the
@@ -130,30 +130,30 @@ the history file contained therein.  The restore script by default will rely on
 the filename to determine its timestamp, but optionally will be able to look
 into the history file in case the filenames have been munged somehow.</p>
 </div>
-<div class="section">
-<h2><a id="about-file-naming" name="about-file-naming">About File Naming</a></h2>
+<div class="section" id="about-file-naming">
+<h2>About File Naming</h2>
 <p>Decision: full backups should <em>not</em> be named specially.  The restore script will
 be able to list which archives will be required to extract the list of files
 from the contained history file.</p>
 </div>
 </div>
-<div class="section">
-<h1><a id="notes" name="notes">Notes</a></h1>
+<div class="section" id="notes">
+<h1>Notes</h1>
 <ul class="simple">
 <li>We do not perform diffs.  Backups could be smaller (more optimal) with diffs,
 but complicate the algorithm.  This is in the interest of simplicity.</li>
 <li>We do not optimize file moves.  Tough tits.</li>
 </ul>
 </div>
-<div class="section">
-<h1><a id="links" name="links">Links</a></h1>
+<div class="section" id="links">
+<h1>Links</h1>
 <p>See this thread:
-<a class="reference" href="http://ask.slashdot.org/article.pl?sid=05/07/22/187217&amp;tid=198&amp;tid=95&amp;tid=4">http://ask.slashdot.org/article.pl?sid=05/07/22/187217&amp;tid=198&amp;tid=95&amp;tid=4</a></p>
+<a class="reference external" href="http://ask.slashdot.org/article.pl?sid=05/07/22/187217&amp;tid=198&amp;tid=95&amp;tid=4">http://ask.slashdot.org/article.pl?sid=05/07/22/187217&amp;tid=198&amp;tid=95&amp;tid=4</a></p>
 </div>
-<div class="section">
-<h1><a id="implementation-notes" name="implementation-notes">Implementation Notes</a></h1>
-<div class="section">
-<h2><a id="treating-directories-just-like-files" name="treating-directories-just-like-files">Treating Directories Just Like Files</a></h2>
+<div class="section" id="implementation-notes">
+<h1>Implementation Notes</h1>
+<div class="section" id="treating-directories-just-like-files">
+<h2>Treating Directories Just Like Files</h2>
 <ul class="simple">
 <li>Treat directories exactly just as files, so that empty backups are of size 0
 (it also much cleaner)<ul>
@@ -167,8 +167,8 @@ but complicate the algorithm.  This is in the interest of simplicity.</li>
 </li>
 </ul>
 </div>
-<div class="section">
-<h2><a id="empty-directories" name="empty-directories">Empty Directories</a></h2>
+<div class="section" id="empty-directories">
+<h2>Empty Directories</h2>
 <ul>
 <li><p class="first">Check if .tar.bz2 can contain empty directories.</p>
 <p>Answer: Yes!  And it also stores the permissions of directories ONLY if the
@@ -186,10 +186,10 @@ permissions.</p>
 </li>
 </ul>
 </div>
-<div class="section">
-<h2><a id="future-ideas-will-not-necessarily-get-done" name="future-ideas-will-not-necessarily-get-done">Future Ideas (Will Not Necessarily Get Done)</a></h2>
-<div class="section">
-<h3><a id="date-for-archives" name="date-for-archives">Date for archives</a></h3>
+<div class="section" id="future-ideas-will-not-necessarily-get-done">
+<h2>Future Ideas (Will Not Necessarily Get Done)</h2>
+<div class="section" id="date-for-archives">
+<h3>Date for archives</h3>
 <blockquote>
 <ul class="simple">
 <li>We could use the time specified on the arniehistory file inside the archive
@@ -197,8 +197,8 @@ instead of the string that is embedded within the archive filename.</li>
 </ul>
 </blockquote>
 </div>
-<div class="section">
-<h3><a id="dates-between-machines" name="dates-between-machines">Dates between machines</a></h3>
+<div class="section" id="dates-between-machines">
+<h3>Dates between machines</h3>
 <blockquote>
 <ul>
 <li><p class="first">Dates between machines could be different, so choosing a date that is stored
@@ -210,8 +210,8 @@ open all the archives to find out the date/times)</p>
 </ul>
 </blockquote>
 </div>
-<div class="section">
-<h3><a id="attributes-support" name="attributes-support">Attributes Support</a></h3>
+<div class="section" id="attributes-support">
+<h3>Attributes Support</h3>
 <ul>
 <li><p class="first">Attributes not supported: st_uid st_gid st_atime st_mtime st_ctime</p>
 <p>Add support for some of those.</p>
