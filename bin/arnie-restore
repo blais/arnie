@@ -46,8 +46,7 @@ from os.path import lexists
 history_fn = '.arniehistory'
 
 
-#-------------------------------------------------------------------------------
-#
+
 class Entry:
     """
     An history file entry.
@@ -111,8 +110,7 @@ def read_history(histfile):
 
     return files
 
-#-------------------------------------------------------------------------------
-#
+
 def getmode(fn):
     """
     Stat that does not follow symlinks that just returns the mode.
@@ -123,8 +121,7 @@ def getmode(fn):
         statres = os.stat(fn)
     return statres.st_mode
 
-#-------------------------------------------------------------------------------
-#
+
 def parse_datetime(dtstr):
     """
     Parse a user-provided date/time string.
@@ -167,8 +164,7 @@ def parse_datetime(dtstr):
 
     return datetime.datetime.combine(restore_date, restore_time)
 
-#-------------------------------------------------------------------------------
-#
+
 def guess_compression(fn):
     """
     Guess the compression of the file, using the filename extension.
@@ -179,8 +175,7 @@ def guess_compression(fn):
         return 'gz'
     return ''
 
-#-------------------------------------------------------------------------------
-#
+
 def filenames2archivenames(histfiles):
     """
     Convert a history contents description into a list of filenames suitable for
@@ -200,8 +195,7 @@ def filenames2archivenames(histfiles):
         filenames.append(fn)
     return filenames
 
-#-------------------------------------------------------------------------------
-#
+
 def restore(histfiles, archives, restoredir):
     """
     Restore the given fileset from the list of archives rooted at restoredir, in
@@ -250,8 +244,7 @@ def restore(histfiles, archives, restoredir):
     return fileset
 
 
-#-------------------------------------------------------------------------------
-#
+
 def verify(histfiles, root):
     """
     Verifies that the restored directory matches the filelist and attributes in
@@ -335,8 +328,7 @@ def verify(histfiles, root):
     return err.getvalue()
 
 
-#-------------------------------------------------------------------------------
-#
+
 def main():
     """
     Main program.

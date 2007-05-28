@@ -48,8 +48,7 @@ from os.path import *
 
 history_fn = '.arniehistory'
 
-#-------------------------------------------------------------------------------
-#
+
 class Entry:
     """
     An history file entry.
@@ -113,8 +112,7 @@ def read_history(histfile):
 
     return files
 
-#-------------------------------------------------------------------------------
-#
+
 def getmode(fn):
     """
     Stat that does not follow symlinks that just returns the mode.
@@ -126,8 +124,7 @@ def getmode(fn):
     return statres.st_mode
 
 
-#-------------------------------------------------------------------------------
-#
+
 def find_files(root, histfiles, excludes=None):
     """
     Find the new files to be backed up.
@@ -278,8 +275,7 @@ def find_files(root, histfiles, excludes=None):
 
     return alldirs, incrdirs, allfiles, incrfiles
 
-#-------------------------------------------------------------------------------
-#
+
 def create_history_file(alldirs, allfiles):
     """
     Overwrite the history file.
@@ -307,8 +303,7 @@ def create_history_file(alldirs, allfiles):
     return f.getvalue()
 
 
-#-------------------------------------------------------------------------------
-#
+
 def backup_files(root, incrdirs, incrfiles, hist_contents, outfn):
     """
     Backup the given list of files to the output archive.
@@ -343,8 +338,7 @@ def backup_files(root, incrdirs, incrfiles, hist_contents, outfn):
     tar.close()
 
 
-#-------------------------------------------------------------------------------
-#
+
 def exists_remote_dir(hostname, rdir):
     """
     Checks if a remote directory exists. Returns True if it does.
@@ -375,8 +369,7 @@ def exists_remote_dir(hostname, rdir):
                 "Error: could not check remote directory...\n%s" % serr)
     return p.returncode == 0
 
-#-------------------------------------------------------------------------------
-#
+
 def main():
     """
     Main program.
