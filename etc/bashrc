@@ -6,10 +6,10 @@
 # Bash configuration for this project.
 #
 
-alias ts='$HOME/p/arnie/test/bin/arnie-tests'
-
-function t () {
-    pushd /tmp >/dev/null
-    $HOME/p/arnie/test/bin/arnie-tests $*
-    popd >/dev/null
-}
+# alias ts='$HOME/p/arnie/test/bin/arnie-tests'
+# 
+# function t () {
+#     pushd /tmp >/dev/null
+#     $HOME/p/arnie/test/bin/arnie-tests $*
+#     popd >/dev/null
+# }
