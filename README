@@ -156,7 +156,11 @@ Other files:
 Download
 ========
 
-The latest release is always available in the `download area </downloads/arnie>`_.
+A Mercurial repository can be found at:
+
+  https://hg.furius.ca/public/arnie/
+
+`Click here for download instructions. </web-furius/downloading.html>`_
 
 
 Installation and Packaging

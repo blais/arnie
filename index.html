@@ -96,7 +96,7 @@ other people.  This is why I provide this code as open source.</p>
 <p>Essentially, the arnie archiver creates a tar archive with all the files that have
 changed since the last backup.  The history of what had been previously backed
 up is kept in a simple text file in the root of the archived directory
-(<tt class="docutils literal"><span class="pre">.arniehistory</span></tt>), and the full list of files available at the moment of backup
+(<tt class="docutils literal">.arniehistory</tt>), and the full list of files available at the moment of backup
 is also included in the tar archive itself.  Optionally, the history file can be
 stored in an alternate location (see options).</p>
 <p>To archive, you typically run a command like this:</p>
@@ -181,17 +181,20 @@ arnie-archive --help
 </div>
 <div class="section" id="download">
 <h1><a class="toc-backref" href="#id7">Download</a></h1>
-<p>The latest release is always available in the <a class="reference external" href="/downloads/arnie">download area</a>.</p>
+<p>A Mercurial repository can be found at:</p>
+<blockquote>
+<a class="reference external" href="https://hg.furius.ca/public/arnie/">https://hg.furius.ca/public/arnie/</a></blockquote>
+<p><a class="reference external" href="/web-furius/downloading.html">Click here for download instructions.</a></p>
 </div>
 <div class="section" id="installation-and-packaging">
 <h1><a class="toc-backref" href="#id8">Installation and Packaging</a></h1>
 <p>Simply copy the <tt class="docutils literal"><span class="pre">arnie/bin/arnie-archive</span></tt> and <tt class="docutils literal"><span class="pre">arnie/bin/arnie-restore</span></tt> scripts to
-<tt class="docutils literal"><span class="pre">/usr/bin</span></tt>.</p>
+<tt class="docutils literal">/usr/bin</tt>.</p>
 </div>
 <div class="section" id="testing">
 <h1><a class="toc-backref" href="#id9">Testing</a></h1>
 <p>If you want to run the test suite, download the source code and see the
-instructions under the <tt class="docutils literal"><span class="pre">test</span></tt> subdirectory (very simple, one Python script to
+instructions under the <tt class="docutils literal">test</tt> subdirectory (very simple, one Python script to
 run).  In case you have a question, it should be extremely easy to add new tests
 to the test code.</p>
 </div>
