@@ -44,5 +44,6 @@ prove it.
       author="Martin Blais",
       author_email="blais@furius.ca",
       url="http://furius.ca/arnie",
+      download_url="http://bitbucket.org/blais/arnie",
       scripts = ['bin/arnie-archive', 'bin/arnie-restore']
      )
