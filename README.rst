@@ -158,7 +158,7 @@ Download
 
 A Mercurial repository can be found at:
 
-  http://bitbucket.org/blais/arnie
+  http://github.com/blais/arnie
 
 
 Installation and Packaging
